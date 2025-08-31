@@ -1,0 +1,14 @@
+[package]
+name = "iced-video-crate"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+iced = "0.13"
+
+url = "2.0"
+
+rfd = "0.14"
+tokio = {version = "1.0", features = ["full"]}
+iced_video_player = {git = "https://github.com/jazzfool/iced_video_player.git", branch="master"}
+
