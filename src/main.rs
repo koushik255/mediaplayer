@@ -3,9 +3,15 @@ use iced::{Element, Task};
 use iced_video_player::{Video, VideoPlayer};
 use std::time::Duration;
 
-fn main() -> iced::Result {
-    // Set GStreamer environment variables before starting the app
+use ass_parser::{AssFile, Dialogue, Dialogues};
+use srtlib::{Subtitles, Timestamp};
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
+use std::thread;
+use std::time::Instant;
 
+fn main() -> iced::Result {
     iced::application("Iced Video Player", App::update, App::view).run_with(App::new)
 }
 
@@ -41,7 +47,6 @@ impl Default for App {
         )
         .unwrap();
 
-        // Ensure audio is enabled and volume is set
         video.set_volume(1.0);
         println!("Video initialized with volume: 1.0");
 
@@ -114,6 +119,8 @@ impl App {
             // subtitles should have a direction relationship
             // what if i took the srt read it then at each time at the video if the time of the
             // video == the time of the subtitle it just displayed under it that lowk so free no?
+            // Goal: figure out how to parse the subtitles one by one
+            // i mean as said above their i would just need to correlate the subtitles with the
             Message::Open => Task::perform(
                 async {
                     let handle = rfd::AsyncFileDialog::new()
@@ -235,3 +242,98 @@ impl App {
             .into()
     }
 }
+
+#[derive(Debug)]
+struct DialogueSlice<'a> {
+    start: &'a str,
+    end: &'a str,
+    text: &'a str,
+}
+
+fn ts_to_duration(t: &Timestamp) -> Duration {
+    let (h, m, s, ms) = t.get();
+    Duration::from_millis(
+        (h as u64) * 3_600_000 + (m as u64) * 60_000 + (s as u64) * 1_000 + (ms as u64),
+    )
+}
+
+fn ass_time_to_duration(t: &str) -> Option<Duration> {
+    let mut parts = t.split(':');
+    let h = parts.next()?.parse::<u64>().ok()?;
+    let m = parts.next()?.parse::<u64>().ok()?;
+    let sec_cs = parts.next()?; // "SS.cs"
+
+    let mut sc = sec_cs.split('.');
+    let s = sc.next()?.parse::<u64>().ok()?;
+    let cs = sc.next()?.parse::<u64>().ok()?; // centiseconds (00–99)
+
+    let millis = h * 3_600_000 + m * 60_000 + s * 1_000 + cs * 10;
+    Some(Duration::from_millis(millis))
+}
+
+fn parser() -> Result<String, srtlib::ParsingError> {
+    let timer = Instant::now();
+    let mut subs = Subtitles::parse_from_file("example.srt", None)?.to_vec();
+    subs.sort();
+
+    let ass_file = AssFile::from_file(
+        "/home/koushikk/Documents/Rust2/parseingsrt/src/Darling in the FranXX - Ep 001.ass",
+    )
+    .expect("error getting file");
+
+    let dialogues: Vec<Dialogue> = ass_file.events.get_dialogues();
+
+    for d in dialogues {
+        //let timera = println!("{:?}", &d.get_text());
+        let begin = &d.get_start().unwrap();
+        let end = &d.get_end().unwrap();
+        //println!("{:?}", begin);
+        //  println!("{:?}", end);
+        let start = ass_time_to_duration(begin.clone().as_str()).unwrap();
+        let finish = ass_time_to_duration(end.clone().as_str()).unwrap();
+
+        let now = timer.elapsed();
+        if start > now {
+            thread::sleep(start - now);
+        }
+        println!("{:?} @{:?}", &d.get_text().unwrap(), start);
+        // would need to set the state // replace the text here
+
+        //let herebo = format!("{:?}", &d.get_text());
+
+        let now = timer.elapsed();
+        if finish > now {
+            thread::sleep(finish - now);
+        }
+    }
+
+    for s in subs {
+        let begin = ts_to_duration(&s.start_time);
+        let end = ts_to_duration(&s.end_time);
+
+        // sleep until it starts
+        let now = timer.elapsed();
+        if begin > now {
+            thread::sleep(begin - now);
+        }
+
+        println!("{} : {:?},time: {:?}", s.text, &s.start_time, now); // show
+
+        // sleep for amount of time it should be on the screen
+        let now = timer.elapsed();
+        if end > now {
+            thread::sleep(end - now);
+        }
+    }
+
+    Ok("good".to_string())
+}
+
+fn read_file(path: &Path) -> String {
+    let mut f = File::open(path).expect("failed to open file");
+    let mut s = String::new();
+    f.read_to_string(&mut s)
+        .expect("failed to read fiile as a utf 8 text");
+    s
+}
+
