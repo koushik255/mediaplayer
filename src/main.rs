@@ -35,6 +35,16 @@ struct App {
     dragging: bool,
     volume: f64,
     muted: bool,
+
+    subtitles: Vec<SubtitleEntry>,
+    active_subtitle: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct SubtitleEntry {
+    start: Duration,
+    end: Duration,
+    text: String,
 }
 
 impl Default for App {
@@ -49,6 +59,7 @@ impl Default for App {
 
         video.set_volume(1.0);
         println!("Video initialized with volume: 1.0");
+        let subtitles = parse_example_subs().unwrap();
 
         Self {
             video,
@@ -56,6 +67,8 @@ impl Default for App {
             dragging: false,
             volume: 1.0,
             muted: false,
+            subtitles,
+            active_subtitle: None,
         }
     }
 }
@@ -87,6 +100,7 @@ impl App {
                     .seek(Duration::from_secs_f64(self.position), false)
                     .expect("seek");
                 self.video.set_paused(false);
+                self.update_active_subtitle();
                 Task::none()
             }
             Message::EndOfStream => {
@@ -96,6 +110,7 @@ impl App {
             Message::NewFrame => {
                 if !self.dragging {
                     self.position = self.video.position().as_secs_f64();
+                    self.update_active_subtitle();
                 }
                 Task::none()
             }
@@ -142,6 +157,8 @@ impl App {
                             self.video = new_video;
                             self.position = 0.0;
                             self.dragging = false;
+                            // load new subtitle here
+                            self.update_active_subtitle();
                         }
                         Err(e) => {
                             eprintln!("Failed to load video: {:?}", e);
@@ -157,6 +174,8 @@ impl App {
     }
 
     fn view(&self) -> Element<Message> {
+        let subtitle_text = self.active_subtitle.as_deref().unwrap_or("");
+
         Column::new()
             .push(
                 Container::new(
@@ -168,6 +187,12 @@ impl App {
                 .align_y(iced::Alignment::Center)
                 .width(iced::Length::Fill)
                 .height(iced::Length::Fill),
+            )
+            .push(
+                Container::new(Text::new(subtitle_text).size(24))
+                    .align_x(iced::Alignment::Center)
+                    .align_y(iced::Alignment::Center)
+                    .padding(iced::Padding::new(10.0).left(20.0).right(100.0)),
             )
             .push(
                 Container::new(
@@ -241,15 +266,16 @@ impl App {
             )
             .into()
     }
-}
+    fn update_active_subtitle(&mut self) {
+        let t = Duration::from_secs_f64(self.position);
 
-#[derive(Debug)]
-struct DialogueSlice<'a> {
-    start: &'a str,
-    end: &'a str,
-    text: &'a str,
+        if let Some(entry) = self.subtitles.iter().find(|s| s.start <= t && t <= s.end) {
+            self.active_subtitle = Some(entry.text.clone());
+        } else {
+            self.active_subtitle = None;
+        }
+    }
 }
-
 fn ts_to_duration(t: &Timestamp) -> Duration {
     let (h, m, s, ms) = t.get();
     Duration::from_millis(
@@ -271,69 +297,79 @@ fn ass_time_to_duration(t: &str) -> Option<Duration> {
     Some(Duration::from_millis(millis))
 }
 
-fn parser() -> Result<String, srtlib::ParsingError> {
-    let timer = Instant::now();
-    let mut subs = Subtitles::parse_from_file("example.srt", None)?.to_vec();
-    subs.sort();
-
-    let ass_file = AssFile::from_file(
-        "/home/koushikk/Documents/Rust2/parseingsrt/src/Darling in the FranXX - Ep 001.ass",
-    )
-    .expect("error getting file");
-
-    let dialogues: Vec<Dialogue> = ass_file.events.get_dialogues();
-
-    for d in dialogues {
-        //let timera = println!("{:?}", &d.get_text());
-        let begin = &d.get_start().unwrap();
-        let end = &d.get_end().unwrap();
-        //println!("{:?}", begin);
-        //  println!("{:?}", end);
-        let start = ass_time_to_duration(begin.clone().as_str()).unwrap();
-        let finish = ass_time_to_duration(end.clone().as_str()).unwrap();
-
-        let now = timer.elapsed();
-        if start > now {
-            thread::sleep(start - now);
-        }
-        println!("{:?} @{:?}", &d.get_text().unwrap(), start);
-        // would need to set the state // replace the text here
-
-        //let herebo = format!("{:?}", &d.get_text());
-
-        let now = timer.elapsed();
-        if finish > now {
-            thread::sleep(finish - now);
+fn strip_ass_tags(s: &str) -> String {
+    // Simple tag stripper: removes {...} blocks and converts \N to newline
+    let mut out = String::with_capacity(s.len());
+    let mut in_brace = false;
+    for c in s.chars() {
+        match c {
+            '{' => in_brace = true,
+            '}' => in_brace = false,
+            _ if !in_brace => out.push(c),
+            _ => {}
         }
     }
-
-    for s in subs {
-        let begin = ts_to_duration(&s.start_time);
-        let end = ts_to_duration(&s.end_time);
-
-        // sleep until it starts
-        let now = timer.elapsed();
-        if begin > now {
-            thread::sleep(begin - now);
-        }
-
-        println!("{} : {:?},time: {:?}", s.text, &s.start_time, now); // show
-
-        // sleep for amount of time it should be on the screen
-        let now = timer.elapsed();
-        if end > now {
-            thread::sleep(end - now);
-        }
-    }
-
-    Ok("good".to_string())
+    out.replace("\\N", "\n").trim().to_string()
 }
 
+fn parse_example_subs() -> Result<Vec<SubtitleEntry>, String> {
+    let mut entries: Vec<SubtitleEntry> = Vec::new();
+
+    if let Ok(subs) = Subtitles::parse_from_file("example.srt", None) {
+        let mut v = subs.to_vec();
+        v.sort();
+        for s in v {
+            entries.push(SubtitleEntry {
+                start: ts_to_duration(&s.start_time),
+                end: ts_to_duration(&s.end_time),
+                text: s.text.trim().to_string(),
+            });
+        }
+    }
+
+    if let Ok(ass_file) = AssFile::from_file(
+        "/home/koushikk/Documents/Rust2/parseingsrt/src/Darling in the FranXX - Ep 001.ass",
+    ) {
+        let dialogues: Vec<Dialogue> = ass_file.events.get_dialogues();
+        for d in dialogues {
+            let (b, e, txt) = (
+                (d.get_start().unwrap()),
+                d.get_end().unwrap(),
+                d.get_text().unwrap(),
+            );
+            {
+                let (start, end) = (
+                    ass_time_to_duration(&b).unwrap(),
+                    ass_time_to_duration(&e).unwrap(),
+                );
+                {
+                    let clean = strip_ass_tags(&txt);
+                    entries.push(SubtitleEntry {
+                        start,
+                        end,
+                        text: clean,
+                    });
+                }
+            }
+        }
+    }
+
+    entries.sort_by_key(|e| e.start);
+    Ok(entries)
+}
+
+#[allow(dead_code)]
 fn read_file(path: &Path) -> String {
     let mut f = File::open(path).expect("failed to open file");
     let mut s = String::new();
     f.read_to_string(&mut s)
-        .expect("failed to read fiile as a utf 8 text");
+        .expect("failed to read file as utf-8 text");
     s
 }
 
+/// subtitle flow
+/// get subtitle parses it wiht the function and sets the global var of subtiles as 
+/// a vec because in the function we return a Vec of SubtitleEntry then in the function 
+/// on the app we just check if the time is after the start or before the end and we keep it on 
+/// the screen and since its updateing per frame 60 per sec this is probably accurate 
+/// then this just update the global active subtitle var which we just print to the screen 
