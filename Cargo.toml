@@ -11,7 +11,7 @@ url = "2.0"
 rfd = "0.14"
 tokio = {version = "1.0", features = ["full"]}
 iced_video_player = {git = "https://github.com/jazzfool/iced_video_player.git", branch="master"}
-ass_parser = "0.2.3"
+ass_parser = {git = "https://github.com/koushik255/ass_parserfork" ,branch = "main"}
 srt = "0.1.0"
 lib = "0.0.1"
 srtlib = "0.2.0"

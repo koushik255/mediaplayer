@@ -189,7 +189,7 @@ impl App {
                 .height(iced::Length::Fill),
             )
             .push(
-                Container::new(Text::new(subtitle_text).size(24))
+                Container::new(Text::new(subtitle_text).size(50))
                     .align_x(iced::Alignment::Center)
                     .align_y(iced::Alignment::Center)
                     .padding(iced::Padding::new(10.0).left(20.0).right(100.0)),
@@ -271,6 +271,7 @@ impl App {
 
         if let Some(entry) = self.subtitles.iter().find(|s| s.start <= t && t <= s.end) {
             self.active_subtitle = Some(entry.text.clone());
+            println!("{:?}", Some(entry.text.clone()));
         } else {
             self.active_subtitle = None;
         }
@@ -309,7 +310,9 @@ fn strip_ass_tags(s: &str) -> String {
             _ => {}
         }
     }
+    //let new = out.replace("\\N", "\n").trim().to_string();
     out.replace("\\N", "\n").trim().to_string()
+    // commas (, ) current if something is after a comma its being cut off
 }
 
 fn parse_example_subs() -> Result<Vec<SubtitleEntry>, String> {
@@ -328,22 +331,18 @@ fn parse_example_subs() -> Result<Vec<SubtitleEntry>, String> {
     }
 
     if let Ok(ass_file) = AssFile::from_file(
-        "/home/koushikk/Documents/Rust2/parseingsrt/src/Darling in the FranXX - Ep 001.ass",
+        "/home/koushikk/Documents/Rust2/parseingsrt/src/Darling in the FranXX [Glue]/[Glue] Darling in the FranXX - 02 [40426618]_Track02_eng.ass",
     ) {
         let dialogues: Vec<Dialogue> = ass_file.events.get_dialogues();
         for d in dialogues {
-            let (b, e, txt) = (
-                (d.get_start().unwrap()),
-                d.get_end().unwrap(),
-                d.get_text().unwrap(),
-            );
-            {
+            if let (Some(b), Some(e), Some(txt)) = (d.get_start(), d.get_end(), d.get_text()) {
                 let (start, end) = (
                     ass_time_to_duration(&b).unwrap(),
                     ass_time_to_duration(&e).unwrap(),
                 );
                 {
                     let clean = strip_ass_tags(&txt);
+                    //let herebrodow = txt.replace(",", " ").trim().to_string();
                     entries.push(SubtitleEntry {
                         start,
                         end,
@@ -356,6 +355,15 @@ fn parse_example_subs() -> Result<Vec<SubtitleEntry>, String> {
 
     entries.sort_by_key(|e| e.start);
     Ok(entries)
+
+    // subtitle flow
+    // get subtitle parses it wiht the function and sets the global var of subtiles as
+    // a vec because in the function we return a Vec of SubtitleEntry then in the function
+    // on the app we just check if the time is after the start or before the end and we keep it on
+    // the screen and since its updateing per frame 60 per sec this is probably accurate
+    // then this just update the global active subtitle var which we just print to the screen
+    // need to implement channels for the subtitles because its lowk kinda slow with the way it is
+    // right now
 }
 
 #[allow(dead_code)]
@@ -367,9 +375,3 @@ fn read_file(path: &Path) -> String {
     s
 }
 
-/// subtitle flow
-/// get subtitle parses it wiht the function and sets the global var of subtiles as 
-/// a vec because in the function we return a Vec of SubtitleEntry then in the function 
-/// on the app we just check if the time is after the start or before the end and we keep it on 
-/// the screen and since its updateing per frame 60 per sec this is probably accurate 
-/// then this just update the global active subtitle var which we just print to the screen 
