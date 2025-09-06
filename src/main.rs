@@ -8,8 +8,6 @@ use srtlib::{Subtitles, Timestamp};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use std::thread;
-use std::time::Instant;
 
 fn main() -> iced::Result {
     iced::application("Iced Video Player", App::update, App::view).run_with(App::new)
@@ -27,6 +25,8 @@ enum Message {
     Opened(Result<url::Url, String>),
     VolumeChanged(f64),
     ToggleMute,
+    OpenSubtitle,
+    OpenedSubtitles(Result<std::path::PathBuf, String>),
 }
 
 struct App {
@@ -59,7 +59,14 @@ impl Default for App {
 
         video.set_volume(1.0);
         println!("Video initialized with volume: 1.0");
-        let subtitles = parse_example_subs().unwrap();
+        let def_sub =
+            "/home/koushikk/Documents/Rust2/parseingsrt/src/Darling in the FranXX - Ep 001.ass";
+
+        //let def_url = Url::from_file_path(
+        //     "/home/koushikk/Documents/Rust2/parseingsrt/src/Darling in the FranXX - Ep 001.ass",
+        //  );
+
+        let subtitles = parse_example_subs(def_sub).unwrap();
 
         Self {
             video,
@@ -170,6 +177,49 @@ impl App {
                 }
                 Task::none()
             }
+
+            Message::OpenSubtitle => Task::perform(
+                async {
+                    let handle = rfd::AsyncFileDialog::new()
+                        .set_title("Choose a subtitle file")
+                        .add_filter("Video files", &["srt", "ass"])
+                        .pick_file()
+                        .await;
+
+                    match handle {
+                        Some(file_handle) => Ok(file_handle.path().to_path_buf()),
+                        None => Err("no file chosen".to_string()),
+                    }
+
+                    // println!("url beofre to str {:?}", handle);
+
+                    //url::Url::from_file_path(handle.path())
+                    //    .map_err(|_| "Invalid file path".to_string())
+                },
+                Message::OpenedSubtitles,
+            ),
+            Message::OpenedSubtitles(file) => {
+                println!("url before  opedn sub() {:?}", file);
+                match file {
+                    Ok(path) => {
+                        let path_str = path.to_string_lossy();
+                        match parse_example_subs(&path_str) {
+                            Ok(new_sub) => {
+                                println!("loaded :{}", new_sub.len());
+                                self.subtitles = new_sub;
+                                self.update_active_subtitle();
+                            }
+                            Err(e) => {
+                                eprintln!("failed to load subttiesl {:?}", e);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("faield to open sub file{}", e);
+                    }
+                }
+                Task::none()
+            }
         }
     }
 
@@ -252,6 +302,7 @@ impl App {
                         .on_press(Message::ToggleLoop),
                     )
                     .push(button("Open").on_press(Message::Open))
+                    .push(button("Open Subtitles").on_press(Message::OpenSubtitle))
                     .push(
                         Text::new(format!(
                             "{}:{:02} / {}:{:02}",
@@ -268,6 +319,12 @@ impl App {
     }
     fn update_active_subtitle(&mut self) {
         let t = Duration::from_secs_f64(self.position);
+        //println!("right before intering over subtitles");
+
+        // should i match here? so that the new subtitle file would be matched then it would be
+        // itered apon?
+        // the problem is within the subtitles.iter() because its not going over any file because
+        // i think its because if let Some() does not allow "flow" and i believe it may be blocking
 
         if let Some(entry) = self.subtitles.iter().find(|s| s.start <= t && t <= s.end) {
             self.active_subtitle = Some(entry.text.clone());
@@ -315,10 +372,12 @@ fn strip_ass_tags(s: &str) -> String {
     // commas (, ) current if something is after a comma its being cut off
 }
 
-fn parse_example_subs() -> Result<Vec<SubtitleEntry>, String> {
+fn parse_example_subs(file: &str) -> Result<Vec<SubtitleEntry>, String> {
     let mut entries: Vec<SubtitleEntry> = Vec::new();
+    println!("Before file parse from file");
+    //let file = file.as_str();
 
-    if let Ok(subs) = Subtitles::parse_from_file("example.srt", None) {
+    if let Ok(subs) = Subtitles::parse_from_file(file, None) {
         let mut v = subs.to_vec();
         v.sort();
         for s in v {
@@ -331,11 +390,14 @@ fn parse_example_subs() -> Result<Vec<SubtitleEntry>, String> {
     }
 
     if let Ok(ass_file) = AssFile::from_file(
-        "/home/koushikk/Documents/Rust2/parseingsrt/src/Darling in the FranXX [Glue]/[Glue] Darling in the FranXX - 02 [40426618]_Track02_eng.ass",
+        //"/home/koushikk/Documents/Rust2/parseingsrt/src/Darling in the FranXX [Glue]/[Glue] Darling in the FranXX - 02 [40426618]_Track02_eng.ass",
+        file,
     ) {
         let dialogues: Vec<Dialogue> = ass_file.events.get_dialogues();
         for d in dialogues {
             if let (Some(b), Some(e), Some(txt)) = (d.get_start(), d.get_end(), d.get_text()) {
+                println!("before duration ass parse");
+                println!("{}", file);
                 let (start, end) = (
                     ass_time_to_duration(&b).unwrap(),
                     ass_time_to_duration(&e).unwrap(),
@@ -343,6 +405,7 @@ fn parse_example_subs() -> Result<Vec<SubtitleEntry>, String> {
                 {
                     let clean = strip_ass_tags(&txt);
                     //let herebrodow = txt.replace(",", " ").trim().to_string();
+                    println!("subtitles before push {:?}", &txt.clone());
                     entries.push(SubtitleEntry {
                         start,
                         end,
@@ -354,6 +417,8 @@ fn parse_example_subs() -> Result<Vec<SubtitleEntry>, String> {
     }
 
     entries.sort_by_key(|e| e.start);
+
+    println!("LOADED SUBTITLE FILE");
     Ok(entries)
 
     // subtitle flow
@@ -374,4 +439,3 @@ fn read_file(path: &Path) -> String {
         .expect("failed to read file as utf-8 text");
     s
 }
-
