@@ -1,13 +1,16 @@
 use iced::widget::{Button, Column, Container, Row, Slider, Text, button};
 use iced::{Element, Task};
 use iced_video_player::{Video, VideoPlayer};
+use std::thread::{self, sleep};
 use std::time::Duration;
+use tokio::time::timeout;
 
 use ass_parser::{AssFile, Dialogue, Dialogues};
 use srtlib::{Subtitles, Timestamp};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use std::sync::mpsc::{self, Receiver, Sender};
 
 fn main() -> iced::Result {
     iced::application("Iced Video Player", App::update, App::view).run_with(App::new)
@@ -38,6 +41,8 @@ struct App {
 
     subtitles: Vec<SubtitleEntry>,
     active_subtitle: Option<String>,
+    rx: Receiver<String>,
+    tx: Sender<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -68,6 +73,8 @@ impl Default for App {
 
         let subtitles = parse_example_subs(def_sub).unwrap();
 
+        let (tx, rx) = mpsc::channel();
+
         Self {
             video,
             position: 0.0,
@@ -76,6 +83,8 @@ impl Default for App {
             muted: false,
             subtitles,
             active_subtitle: None,
+            tx,
+            rx,
         }
     }
 }
@@ -136,13 +145,17 @@ impl App {
                 Task::none()
             }
 
-            // for the subtitles could i not just like put it under the video like wait i can 100%
-            // just display the text and sync it up with the video i mean the video and the
-            // subtitles should have a direction relationship
-            // what if i took the srt read it then at each time at the video if the time of the
-            // video == the time of the subtitle it just displayed under it that lowk so free no?
-            // Goal: figure out how to parse the subtitles one by one
-            // i mean as said above their i would just need to correlate the subtitles with the
+            // next task is to make it so i can push the subtitles forwards or backwards,
+            // meaning like you can sync them up yourself
+            //im pretty sure the ass_parser library has something for this
+            //but i probably want to do this in memory right?
+            //or i could just like make a new file each time and since the .ass files arent
+            //large this wouldnt really be a problem and it would deal with like the history
+            //of the file itsself, could i not just put a sleep on the playing subtitles func and
+            //have it mut? honeslty it would be beneficial if i did that but i dont feel like it
+            //right now because all it is, if i want it to be as fast ass possible i should just
+            //change the file tbh
+            //reading and writing can be put onto threads since they can be blocking
             Message::Open => Task::perform(
                 async {
                     let handle = rfd::AsyncFileDialog::new()
@@ -319,16 +332,21 @@ impl App {
     }
     fn update_active_subtitle(&mut self) {
         let t = Duration::from_secs_f64(self.position);
-        //println!("right before intering over subtitles");
 
-        // should i match here? so that the new subtitle file would be matched then it would be
-        // itered apon?
-        // the problem is within the subtitles.iter() because its not going over any file because
-        // i think its because if let Some() does not allow "flow" and i believe it may be blocking
+        // if i make this run on a different thread, then it wouldnt conflict with the pauseing of
+        // the video right?
 
-        if let Some(entry) = self.subtitles.iter().find(|s| s.start <= t && t <= s.end) {
+        if let Some(entry) = self.subtitles.iter().find(|s| {
+            s.start + Duration::from_millis(3000) <= t && t <= s.end + Duration::from_millis(3000)
+        }) {
             self.active_subtitle = Some(entry.text.clone());
+            //{
+            //  thread::sleep(Duration::from_secs(1));
+            //};
             println!("{:?}", Some(entry.text.clone()));
+            let herebro = entry.text.clone();
+
+            self.tx.send(herebro).expect("error sending herebro");
         } else {
             self.active_subtitle = None;
         }
@@ -420,15 +438,6 @@ fn parse_example_subs(file: &str) -> Result<Vec<SubtitleEntry>, String> {
 
     println!("LOADED SUBTITLE FILE");
     Ok(entries)
-
-    // subtitle flow
-    // get subtitle parses it wiht the function and sets the global var of subtiles as
-    // a vec because in the function we return a Vec of SubtitleEntry then in the function
-    // on the app we just check if the time is after the start or before the end and we keep it on
-    // the screen and since its updateing per frame 60 per sec this is probably accurate
-    // then this just update the global active subtitle var which we just print to the screen
-    // need to implement channels for the subtitles because its lowk kinda slow with the way it is
-    // right now
 }
 
 #[allow(dead_code)]

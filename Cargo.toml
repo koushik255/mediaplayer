@@ -15,7 +15,7 @@ ass_parser = {git = "https://github.com/koushik255/ass_parserfork" ,branch = "ma
 srt = "0.1.0"
 lib = "0.0.1"
 srtlib = "0.2.0"
-tokio = { version = "1.47.1", features = ["sync"] }
+tokio = { version = "1.47.1", features = ["sync", "time"] }
 
 full = "0.3.0"
 
