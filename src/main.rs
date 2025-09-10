@@ -1,15 +1,18 @@
 use iced::widget::{Button, Column, Container, Row, Slider, Text, button};
-use iced::{Element, Task};
+use iced::{Element, Task, executor};
 use iced_video_player::{Video, VideoPlayer};
+use rusqlite::Connection;
+use rusqlite::params;
+use std::borrow::Cow;
 use std::thread::{self, sleep};
-use std::time::Duration;
+use std::time::{self, Duration, SystemTime};
 use tokio::time::timeout;
 
 use ass_parser::{AssFile, Dialogue, Dialogues};
 use srtlib::{Subtitles, Timestamp};
 use std::fs::File;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, Sender};
 
 fn main() -> iced::Result {
@@ -30,6 +33,7 @@ enum Message {
     ToggleMute,
     OpenSubtitle,
     OpenedSubtitles(Result<std::path::PathBuf, String>),
+    Quit,
 }
 
 struct App {
@@ -43,6 +47,9 @@ struct App {
     active_subtitle: Option<String>,
     rx: Receiver<String>,
     tx: Sender<String>,
+    video_url: PathBuf,
+    subtitle_file: PathBuf,
+    last_from_db: Dbchoose,
 }
 
 #[derive(Debug, Clone)]
@@ -54,35 +61,51 @@ struct SubtitleEntry {
 
 impl Default for App {
     fn default() -> Self {
+        let last_db = db_get_last();
+
+        //let mut video = Video::new( &url::Url::from_file_path(std::path::PathBuf::from(
+        //       "/home/koushikk/Downloads/Download(1).mp4",
+        //   ))
+        //   .unwrap(),
+        //  )
+        //  .unwrap();
+
+        println!("Video initialized with volume: 1.0");
+        let def_sub = last_db.subfile.as_str();
+        println!("CHECKING IF DEFSUB FUCK UP AS STR {}", def_sub);
+
         let mut video = Video::new(
-            &url::Url::from_file_path(std::path::PathBuf::from(
-                "/home/koushikk/Downloads/Download(1).mp4",
-            ))
-            .unwrap(),
+            &url::Url::from_file_path(std::path::PathBuf::from(last_db.vid_file.clone())).unwrap(),
         )
         .unwrap();
-
-        video.set_volume(1.0);
-        println!("Video initialized with volume: 1.0");
-        let def_sub =
-            "/home/koushikk/Documents/Rust2/parseingsrt/src/Darling in the FranXX - Ep 001.ass";
 
         //let def_url = Url::from_file_path(
         //     "/home/koushikk/Documents/Rust2/parseingsrt/src/Darling in the FranXX - Ep 001.ass",
         //  );
+        let subtitle_file = PathBuf::from(def_sub);
 
         let subtitles = parse_example_subs(def_sub).unwrap();
 
         let (tx, rx) = mpsc::channel();
+        let path = PathBuf::from(last_db.vid_file.clone());
+        let def_pos = last_db.time;
+        println!("{}", def_pos.clone());
+
+        video
+            .seek(Duration::from_secs_f64(def_pos), false)
+            .expect("seek");
 
         Self {
             video,
-            position: 0.0,
+            position: def_pos,
             dragging: false,
             volume: 1.0,
             muted: false,
             subtitles,
+            subtitle_file,
             active_subtitle: None,
+            video_url: path,
+            last_from_db: last_db,
             tx,
             rx,
         }
@@ -98,6 +121,10 @@ impl App {
         match message {
             Message::TogglePause => {
                 self.video.set_paused(!self.video.paused());
+                println!(
+                    "{} {} {}",
+                    self.last_from_db.vid_file, self.last_from_db.time, self.last_from_db.subfile
+                );
                 Task::none()
             }
             Message::ToggleLoop => {
@@ -128,6 +155,7 @@ impl App {
                     self.position = self.video.position().as_secs_f64();
                     self.update_active_subtitle();
                 }
+                println!("{}, {:?}", self.position.clone(), self.video_url.clone());
                 Task::none()
             }
             Message::VolumeChanged(vol) => {
@@ -143,6 +171,28 @@ impl App {
                 self.video.set_volume(actual_volume);
                 println!("Mute toggled: {} (volume: {})", self.muted, actual_volume);
                 Task::none()
+            }
+            Message::Quit => {
+                //db_get_last();
+                //
+                //
+                //
+                //
+                println!(
+                    "THINGS TO SAVE TO DB FILE:{:?}\n TIME: {:?} SUBTILTLE-FILE: {:?}",
+                    self.video_url,
+                    self.position,
+                    self.subtitle_file.clone()
+                );
+                let (new_url, new_pos, new_subfile) = (
+                    self.video_url.clone().to_string_lossy().into_owned(),
+                    self.position,
+                    self.subtitle_file.clone().to_string_lossy().into_owned(),
+                );
+                db(new_pos, new_url, new_subfile);
+                // into owned turns lossy into String i mean i should have assumed so TBH
+
+                iced::exit()
             }
 
             // next task is to make it so i can push the subtitles forwards or backwards,
@@ -171,12 +221,17 @@ impl App {
                 Message::Opened,
             ),
             Message::Opened(result) => {
+                self.video_url = result.clone().unwrap().to_file_path().unwrap();
+                println!("updated video_url");
+
                 match result {
                     Ok(url) => match Video::new(&url) {
                         Ok(new_video) => {
                             self.video = new_video;
                             self.position = 0.0;
                             self.dragging = false;
+                            //self.video.set_subtitle_url()
+
                             // load new subtitle here
                             self.update_active_subtitle();
                         }
@@ -213,6 +268,7 @@ impl App {
             ),
             Message::OpenedSubtitles(file) => {
                 println!("url before  opedn sub() {:?}", file);
+                self.subtitle_file = file.clone().unwrap();
                 match file {
                     Ok(path) => {
                         let path_str = path.to_string_lossy();
@@ -278,6 +334,11 @@ impl App {
                                 .width(40.0)
                                 .on_press(Message::ToggleMute),
                         )
+                        .push(
+                            Button::new(Text::new("QUIT"))
+                                .width(40.0)
+                                .on_press(Message::Quit),
+                        )
                         .push(Text::new("Volume:"))
                         .push(
                             Slider::new(0.0..=1.0, self.volume, Message::VolumeChanged)
@@ -337,13 +398,20 @@ impl App {
         // the video right?
 
         if let Some(entry) = self.subtitles.iter().find(|s| {
-            s.start + Duration::from_millis(3000) <= t && t <= s.end + Duration::from_millis(3000)
+            s.start + Duration::from_millis(000) <= t && t <= s.end + Duration::from_millis(0000)
+            // 3000 for fate/zero
+            // i should make it so i can put like a scroll bar so you can do it dynamically within
+            // the app easility
+            // need to add feature which keeps your last played video and it gets the time aswell
+            // i woudlny be able to do it on close because what if they are open multiple videos at
+            // once it would have to be per video then also on close into the local db
         }) {
             self.active_subtitle = Some(entry.text.clone());
             //{
             //  thread::sleep(Duration::from_secs(1));
             //};
             println!("{:?}", Some(entry.text.clone()));
+            println!("{:?} ", SystemTime::now());
             let herebro = entry.text.clone();
 
             self.tx.send(herebro).expect("error sending herebro");
@@ -370,7 +438,7 @@ fn ass_time_to_duration(t: &str) -> Option<Duration> {
     let cs = sc.next()?.parse::<u64>().ok()?; // centiseconds (00–99)
 
     let millis = h * 3_600_000 + m * 60_000 + s * 1_000 + cs * 10;
-    Some(Duration::from_millis(millis))
+    Some(Duration::from_millis(millis) + Duration::from_secs(2))
 }
 
 fn strip_ass_tags(s: &str) -> String {
@@ -401,6 +469,7 @@ fn parse_example_subs(file: &str) -> Result<Vec<SubtitleEntry>, String> {
         for s in v {
             entries.push(SubtitleEntry {
                 start: ts_to_duration(&s.start_time),
+                // i could just add to time here
                 end: ts_to_duration(&s.end_time),
                 text: s.text.trim().to_string(),
             });
@@ -438,6 +507,62 @@ fn parse_example_subs(file: &str) -> Result<Vec<SubtitleEntry>, String> {
 
     println!("LOADED SUBTITLE FILE");
     Ok(entries)
+}
+
+// needs to take the 3 params
+#[derive(Debug, Clone)]
+struct Dbchoose {
+    time: f64,
+    vid_file: String,
+    subfile: String,
+}
+fn db(time: f64, vid_file: String, subfile: String) {
+    let conn = Connection::open("mydb.sqlite3").expect("error connecting to db");
+    println!(
+        "DB: params which are being inserted {} {} {}",
+        time, vid_file, subfile
+    );
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS last (
+                    time  REAL,
+                    file  TEXT NOT NULL,
+                    subfile  TEXT NOT NULL
+)",
+        [],
+    )
+    .expect("erroring creating db table");
+    conn.execute("DELETE from last", [])
+        .expect("Error deleting lsat table");
+
+    conn.execute(
+        "INSERT INTO last (time,file,subfile) VALUES (?1,?2,?3)",
+        params![time, vid_file, subfile],
+    )
+    .expect("erroing inserting last");
+
+    println!("succesfully added last to db");
+}
+
+fn db_get_last() -> Dbchoose {
+    let conn = Connection::open("mydb.sqlite3").expect("Error connecting to db");
+
+    let mut stmt = conn
+        .prepare("SELECT time,file,subfile FROM last")
+        .expect("statement error");
+
+    let last = stmt.query_one([], |row| {
+        Ok(Dbchoose {
+            time: row.get(0).expect("error time db"),
+            vid_file: row.get(1).expect("error file db"),
+            subfile: row.get(2).expect("error sub db"),
+        })
+    });
+
+    let lastreturn = last.unwrap().clone();
+    println!("{:?}", lastreturn);
+
+    lastreturn
 }
 
 #[allow(dead_code)]
