@@ -1,4 +1,4 @@
-use iced::widget::{Button, Column, Container, Row, Slider, Text, button};
+use iced::widget::{Button, Column, Container, Row, Slider, Text, button, text, text_input};
 use iced::{Element, Task, executor};
 use iced_video_player::{Video, VideoPlayer};
 use rusqlite::Connection;
@@ -35,6 +35,8 @@ enum Message {
     OpenSubtitle,
     OpenedSubtitles(Result<std::path::PathBuf, String>),
     Quit,
+    ValueChanged(String),
+    SubmitPressed,
 }
 
 struct App {
@@ -51,6 +53,8 @@ struct App {
     video_url: PathBuf,
     subtitle_file: PathBuf,
     last_from_db: Dbchoose,
+    value: String,
+    parsed: Option<f64>,
 }
 
 #[derive(Debug, Clone)]
@@ -114,6 +118,8 @@ impl Default for App {
             active_subtitle: None,
             video_url: path,
             last_from_db: last_db,
+            parsed: Some(0.0),
+            value: "".to_string(),
             tx,
             rx,
         }
@@ -205,6 +211,22 @@ impl App {
                 // into owned turns lossy into String i mean i should have assumed so TBH
 
                 iced::exit()
+            }
+            Message::ValueChanged(val) => {
+                self.value = val.clone();
+
+                // try parse
+                self.parsed = val.parse::<f64>().ok();
+                Task::none()
+            }
+            Message::SubmitPressed => {
+                if let Some(number) = self.parsed {
+                    println!("user number : {number}");
+                } else {
+                    println!("user number no work");
+                }
+
+                Task::none()
             }
 
             // next task is to make it so i can push the subtitles forwards or backwards,
@@ -357,6 +379,18 @@ impl App {
             )
             .push(
                 Container::new(
+                    text_input("Enter a number...", &self.value)
+                        .on_input(Message::ValueChanged)
+                        .on_submit(Message::SubmitPressed)
+                        .padding(5)
+                        .size(15), // font size
+                )
+                .align_x(iced::Alignment::Center)
+                .align_y(iced::Alignment::Center)
+                .padding(iced::Padding::new(10.0)),
+            )
+            .push(
+                Container::new(
                     Slider::new(
                         0.0..=self.video.duration().as_secs_f64(),
                         self.position,
@@ -435,7 +469,8 @@ impl App {
     }
     fn update_active_subtitle(&mut self) {
         let mut t = Duration::from_secs_f64(self.position);
-        t += Duration::from_secs_f64(0.0);
+        t += Duration::from_secs_f64(self.parsed.unwrap());
+        println!("updated t {:?} + {:?} ", t, self.parsed.unwrap());
 
         // if i make this run on a different thread, then it wouldnt conflict with the pauseing of
         // the video right?
