@@ -2,6 +2,7 @@ use iced::widget::{Button, Column, Container, Row, Slider, Text, button};
 use iced::{Element, Task, executor};
 use iced_video_player::{Video, VideoPlayer};
 use rusqlite::Connection;
+use rusqlite::Result;
 use rusqlite::params;
 use std::borrow::Cow;
 use std::thread::{self, sleep};
@@ -82,6 +83,13 @@ impl Default for App {
         //let def_url = Url::from_file_path(
         //     "/home/koushikk/Documents/Rust2/parseingsrt/src/Darling in the FranXX - Ep 001.ass",
         //  );
+        //  // maybe i make it so you can have multiple last played like for eaxh file its
+        //  propritary
+        //
+        //  i could make it another db and just on exit it ques it into 2 dbs one for last and
+        //  another for the perm save and that would save for if the file name is not already in
+        //  the db
+        //  and thats how i would make the save states work
         let subtitle_file = PathBuf::from(def_sub);
 
         let subtitles = parse_example_subs(def_sub).unwrap();
@@ -125,6 +133,8 @@ impl App {
                     "{} {} {}",
                     self.last_from_db.vid_file, self.last_from_db.time, self.last_from_db.subfile
                 );
+                //let alldbs = db_get_all();
+                // println!("{:?}", alldbs.unwrap());
                 Task::none()
             }
             Message::ToggleLoop => {
@@ -155,7 +165,7 @@ impl App {
                     self.position = self.video.position().as_secs_f64();
                     self.update_active_subtitle();
                 }
-                println!("{}, {:?}", self.position.clone(), self.video_url.clone());
+                //println!("{}, {:?}", self.position.clone(), self.video_url.clone());
                 Task::none()
             }
             Message::VolumeChanged(vol) => {
@@ -190,6 +200,8 @@ impl App {
                     self.subtitle_file.clone().to_string_lossy().into_owned(),
                 );
                 db(new_pos, new_url, new_subfile);
+                //b_for_each(new_pos, new_url, new_subfile);
+                println!("both dbed worked");
                 // into owned turns lossy into String i mean i should have assumed so TBH
 
                 iced::exit()
@@ -218,6 +230,8 @@ impl App {
                     url::Url::from_file_path(handle.path())
                         .map_err(|_| "Invalid file path".to_string())
                 },
+                // do i make it so that the file open is the same case as this or something
+                // differnt i mean since it returns something it would be hard to make it the smae
                 Message::Opened,
             ),
             Message::Opened(result) => {
@@ -288,12 +302,28 @@ impl App {
                     }
                 }
                 Task::none()
-            }
+            } // so i should choose a directory, it then reads the directory and then maybe in the
+              // order it print it, you would know the next one because you could just enumerate your
+              // position and +1 and ur good on the other and you could click next and it would go
+              // next and after chosing ur folder for video you just chose your folder for the
+              // subtites aswell
         }
     }
 
     fn view(&self) -> Element<Message> {
         let subtitle_text = self.active_subtitle.as_deref().unwrap_or("");
+        let filename_text = self
+            .video_url
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned();
+        let subtitles_file = self
+            .subtitle_file
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned();
 
         Column::new()
             .push(
@@ -309,6 +339,18 @@ impl App {
             )
             .push(
                 Container::new(Text::new(subtitle_text).size(50))
+                    .align_x(iced::Alignment::Center)
+                    .align_y(iced::Alignment::Center)
+                    .padding(iced::Padding::new(10.0).left(20.0).right(100.0)),
+            )
+            .push(
+                Container::new(Text::new(subtitles_file).size(20))
+                    .align_x(iced::Alignment::Center)
+                    .align_y(iced::Alignment::Center)
+                    .padding(iced::Padding::new(10.0).left(20.0).right(100.0)),
+            )
+            .push(
+                Container::new(Text::new(filename_text).size(20))
                     .align_x(iced::Alignment::Center)
                     .align_y(iced::Alignment::Center)
                     .padding(iced::Padding::new(10.0).left(20.0).right(100.0)),
@@ -392,7 +434,8 @@ impl App {
             .into()
     }
     fn update_active_subtitle(&mut self) {
-        let t = Duration::from_secs_f64(self.position);
+        let mut t = Duration::from_secs_f64(self.position);
+        t += Duration::from_secs_f64(0.0);
 
         // if i make this run on a different thread, then it wouldnt conflict with the pauseing of
         // the video right?
@@ -410,9 +453,10 @@ impl App {
             //{
             //  thread::sleep(Duration::from_secs(1));
             //};
-            println!("{:?}", Some(entry.text.clone()));
-            println!("{:?} ", SystemTime::now());
+            //println!("{:?}", Some(entry.text.clone()));
+            //println!("{:?} ", SystemTime::now());
             let herebro = entry.text.clone();
+            println!("{:?}, TIME: {:?}", herebro.clone(), SystemTime::now());
 
             self.tx.send(herebro).expect("error sending herebro");
         } else {
@@ -509,6 +553,16 @@ fn parse_example_subs(file: &str) -> Result<Vec<SubtitleEntry>, String> {
     Ok(entries)
 }
 
+// before the for each db i need to make something which can somewhat sink the folders of the
+// subttiles and video folder,
+// first il make it display the episode and subtitle file on the screen
+// subtitles are on screen but i should me able to open a folder then it plays the videos in the
+// appropriate order
+// you open a folder, it first would just print out the dir
+// then i mean most folder are already in order so maybe it just works lowk
+// acuallty i dont know if i want to add this because its like to much formatting and shit maybe if
+// i find a different way
+//
 // needs to take the 3 params
 #[derive(Debug, Clone)]
 struct Dbchoose {
@@ -542,6 +596,55 @@ fn db(time: f64, vid_file: String, subfile: String) {
     .expect("erroing inserting last");
 
     println!("succesfully added last to db");
+}
+
+fn db_for_each(time: f64, vid_file: String, subfile: String) {
+    let conn = Connection::open("allvids.sqlite3").expect("Error connecting to db");
+    println!("db for each now");
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS all (
+                    time REAL,
+                    file TEXT NOT NULL UNIQUE,
+                    subfile TEXT NOT NULL UNIQUE
+)",
+        [],
+    )
+    .expect("error creaing db table");
+
+    conn.execute(
+        "INSERT INTO all(time,file,subfile) VALUES(?1,?2,?3)",
+        params![time, vid_file, subfile],
+    )
+    .expect("Erroring inserting last");
+
+    println!("after inserting to everything")
+}
+
+fn db_get_all() -> Result<Vec<Dbchoose>> {
+    let conn = Connection::open("allvids.sqlite3").expect("errpr connecting ot db");
+    println!("db get all");
+
+    let mut stmt = conn
+        .prepare("SELECT time,file,subfile FROM all")
+        .expect("error selcting db all");
+
+    let all = stmt
+        .query_map([], |row| {
+            Ok(Dbchoose {
+                time: row.get(0).expect("error time db all"),
+                vid_file: row.get(1).expect("error file db all"),
+                subfile: row.get(2).expect("errrpr sub db"),
+            })
+        })
+        .expect("error getting query ")
+        .collect::<Result<Vec<_>, _>>()
+        .expect("error collect");
+    // for impl iterators all you have to do is collect them thats basically
+    // all bruh
+    // review this i have no fucking clue whats happening tbh
+
+    Ok(all)
 }
 
 fn db_get_last() -> Dbchoose {
