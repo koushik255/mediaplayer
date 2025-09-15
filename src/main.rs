@@ -5,13 +5,14 @@ use rusqlite::Connection;
 use rusqlite::Result;
 use rusqlite::params;
 use std::borrow::Cow;
+use std::io;
 use std::thread::{self, sleep};
 use std::time::{self, Duration, SystemTime};
 use tokio::time::timeout;
 
 use ass_parser::{AssFile, Dialogue, Dialogues};
 use srtlib::{Subtitles, Timestamp};
-use std::fs::File;
+use std::fs::{File, read_dir};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -37,6 +38,8 @@ enum Message {
     Quit,
     ValueChanged(String),
     SubmitPressed,
+    OpenVidFolder,
+    OpenedFolder(Result<std::path::PathBuf, String>),
 }
 
 struct App {
@@ -55,6 +58,9 @@ struct App {
     last_from_db: Dbchoose,
     value: String,
     parsed: Option<f64>,
+    video_folder: String,
+    video_folder_positon: usize,
+    video_folder_current_video: PathBuf,
 }
 
 #[derive(Debug, Clone)]
@@ -122,6 +128,9 @@ impl Default for App {
             value: "".to_string(),
             tx,
             rx,
+            video_folder: "none".to_string(),
+            video_folder_positon: 0,
+            video_folder_current_video: PathBuf::from("."),
         }
     }
 }
@@ -141,6 +150,28 @@ impl App {
                 );
                 //let alldbs = db_get_all();
                 // println!("{:?}", alldbs.unwrap());
+                //
+                let mut videos = read_dir(self.video_folder.clone())
+                    .expect("error reading video folder ")
+                    .map(|res| res.map(|e| e.path()))
+                    .collect::<Result<Vec<_>, io::Error>>()
+                    .expect("error collecting vids");
+                videos.sort();
+
+                //for video in videos.clone() {
+                //  println!("contents of your folder {:?}", video.display());
+                //}
+
+                let herebro: Vec<(usize, std::path::PathBuf)> =
+                    videos.into_iter().enumerate().collect();
+                // println!("your folder better print {:?}", herebro);
+
+                if let Some((i, vid)) = herebro.get(self.video_folder_positon) {
+                    println!("first video {} {}", i, vid.display());
+                    self.video_folder_positon = *i + 1;
+                    self.video_folder_current_video = vid.clone();
+                }
+
                 Task::none()
             }
             Message::ToggleLoop => {
@@ -324,11 +355,42 @@ impl App {
                     }
                 }
                 Task::none()
+            }
+            Message::OpenVidFolder => Task::perform(
+                async {
+                    let handle = rfd::AsyncFileDialog::new()
+                        .set_title("chose a video folder")
+                        //.add_filter("video files", &["mp4"])
+                        .pick_folder()
+                        .await;
+                    match handle {
+                        Some(folder_handle) => Ok(folder_handle.path().to_path_buf()),
+                        None => Err("no folder chosen".to_string()),
+                    }
+                },
+                Message::OpenedFolder,
+            ),
+            Message::OpenedFolder(folder) => {
+                println!("folder location {:?}", folder);
+                let folder = folder.unwrap().to_string_lossy().into_owned();
+
+                self.video_folder = folder.clone();
+                Task::none()
             } // so i should choose a directory, it then reads the directory and then maybe in the
               // order it print it, you would know the next one because you could just enumerate your
               // position and +1 and ur good on the other and you could click next and it would go
               // next and after chosing ur folder for video you just chose your folder for the
               // subtites aswell
+              // ok this is what i will work on now
+              // a way to to forward and backwards on your video directory, and it would be the same
+              // for the subtitles
+              // but the problem comes from how do i get them in order
+              // that is not a problem because read_dir already reads them in order,
+              // open folder, plays from the first video, if you wanna go next click next and we
+              // would just enumerate your episode you are watching and we could just do video+1 same
+              // with the subtitles since they are all in the same folder
+              // CURIOUS- how does the read_dir read it in order? and also how does thunar just know
+              // like how to order the stuff
         }
     }
 
@@ -452,6 +514,7 @@ impl App {
                         .on_press(Message::ToggleLoop),
                     )
                     .push(button("Open").on_press(Message::Open))
+                    .push(button("OPEN VID FOLDER").on_press(Message::OpenVidFolder))
                     .push(button("Open Subtitles").on_press(Message::OpenSubtitle))
                     .push(
                         Text::new(format!(

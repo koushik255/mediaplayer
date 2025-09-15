@@ -19,6 +19,8 @@ tokio = { version = "1.47.1", features = ["sync", "time"] }
 
 full = "0.3.0"
 rusqlite = "0.37.0"
+fs = "0.0.5"
+io = "0.0.2"
 
 
 
