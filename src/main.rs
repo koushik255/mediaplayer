@@ -41,6 +41,7 @@ enum Message {
     SubmitPressed,
     OpenVidFolder,
     OpenedFolder(Result<std::path::PathBuf, String>),
+    Next,
 }
 
 struct App {
@@ -152,6 +153,10 @@ impl App {
                 //let alldbs = db_get_all();
                 // println!("{:?}", alldbs.unwrap());
                 //
+
+                Task::none()
+            }
+            Message::Next => {
                 let mut videos = read_dir(self.video_folder.clone())
                     .expect("error reading video folder ")
                     .map(|res| res.map(|e| e.path()))
@@ -196,6 +201,7 @@ impl App {
 
                 // now i should make a button which is differnet to toggle pause which would change
                 // the current playing video to the next videoin the folder
+                //
 
                 Task::none()
             }
@@ -541,6 +547,7 @@ impl App {
                     .push(button("Open").on_press(Message::Open))
                     .push(button("OPEN VID FOLDER").on_press(Message::OpenVidFolder))
                     .push(button("Open Subtitles").on_press(Message::OpenSubtitle))
+                    .push(button("next video").on_press(Message::Next))
                     .push(
                         Text::new(format!(
                             "{}:{:02} / {}:{:02}",
