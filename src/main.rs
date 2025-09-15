@@ -5,10 +5,11 @@ use rusqlite::Connection;
 use rusqlite::Result;
 use rusqlite::params;
 use std::borrow::Cow;
-use std::io;
 use std::thread::{self, sleep};
 use std::time::{self, Duration, SystemTime};
+use std::{io, path};
 use tokio::time::timeout;
+use url::Url;
 
 use ass_parser::{AssFile, Dialogue, Dialogues};
 use srtlib::{Subtitles, Timestamp};
@@ -171,6 +172,30 @@ impl App {
                     self.video_folder_positon = *i + 1;
                     self.video_folder_current_video = vid.clone();
                 }
+
+                let path_str = self
+                    .video_folder_current_video
+                    .to_path_buf()
+                    .to_string_lossy()
+                    .into_owned();
+                println!(" path string beofre to url {}", path_str);
+
+                let url_her = path_str.as_str();
+                println!("Path string after as str {}", url_her);
+                // let url = Url::parse(url_her).expect("error parseing url");
+                let url = Url::from_file_path(self.video_folder_current_video.clone())
+                    .expect("error URL");
+
+                let new_video = Video::new(&url).expect("Error creating new video in pause");
+                self.video_url = self
+                    .video_folder_current_video
+                    .to_string_lossy()
+                    .into_owned()
+                    .into();
+                self.video = new_video;
+
+                // now i should make a button which is differnet to toggle pause which would change
+                // the current playing video to the next videoin the folder
 
                 Task::none()
             }
