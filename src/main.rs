@@ -42,6 +42,8 @@ enum Message {
     OpenVidFolder,
     OpenedFolder(Result<std::path::PathBuf, String>),
     Next,
+    OpenSubFolder,
+    OpenedSubFolder(Result<std::path::PathBuf, String>),
 }
 
 struct App {
@@ -63,6 +65,9 @@ struct App {
     video_folder: String,
     video_folder_positon: usize,
     video_folder_current_video: PathBuf,
+    subtitle_folder: String,
+    subtitle_folder_position: usize,
+    subtitle_folder_current_sub: PathBuf,
 }
 
 #[derive(Debug, Clone)]
@@ -102,7 +107,7 @@ impl Default for App {
         //  another for the perm save and that would save for if the file name is not already in
         //  the db
         //  and thats how i would make the save states work
-        let subtitle_file = PathBuf::from(def_sub);
+        let mut subtitle_file = PathBuf::from(def_sub);
 
         let subtitles = parse_example_subs(def_sub).unwrap();
 
@@ -122,7 +127,7 @@ impl Default for App {
             volume: 1.0,
             muted: false,
             subtitles,
-            subtitle_file,
+            subtitle_file: subtitle_file.clone(),
             active_subtitle: None,
             video_url: path,
             last_from_db: last_db,
@@ -133,6 +138,9 @@ impl Default for App {
             video_folder: "none".to_string(),
             video_folder_positon: 0,
             video_folder_current_video: PathBuf::from("."),
+            subtitle_folder: "none".to_string(),
+            subtitle_folder_position: 0,
+            subtitle_folder_current_sub: subtitle_file,
         }
     }
 }
@@ -150,6 +158,8 @@ impl App {
                     "{} {} {}",
                     self.last_from_db.vid_file, self.last_from_db.time, self.last_from_db.subfile
                 );
+
+                println!("subtitle file currently {:?}", self.subtitle_file.clone());
                 //let alldbs = db_get_all();
                 // println!("{:?}", alldbs.unwrap());
                 //
@@ -164,12 +174,21 @@ impl App {
                     .expect("error collecting vids");
                 videos.sort();
 
+                let mut subtitles = read_dir(self.subtitle_folder.clone())
+                    .expect("error reading subtitles fodler")
+                    .map(|e| e.map(|r| r.path()))
+                    .collect::<Result<Vec<_>, io::Error>>()
+                    .expect("Error collect subtitles");
+                subtitles.sort();
+
                 //for video in videos.clone() {
                 //  println!("contents of your folder {:?}", video.display());
                 //}
 
                 let herebro: Vec<(usize, std::path::PathBuf)> =
                     videos.into_iter().enumerate().collect();
+                let heresub: Vec<(usize, std::path::PathBuf)> =
+                    subtitles.into_iter().enumerate().collect();
                 // println!("your folder better print {:?}", herebro);
 
                 if let Some((i, vid)) = herebro.get(self.video_folder_positon) {
@@ -177,6 +196,16 @@ impl App {
                     self.video_folder_positon = *i + 1;
                     self.video_folder_current_video = vid.clone();
                 }
+                if let Some((i, sub)) = heresub.get(self.subtitle_folder_position) {
+                    println!("first subtitle {} {}", i, sub.display());
+                    self.subtitle_folder_position = *i + 1;
+                    self.subtitle_folder_current_sub = sub.clone();
+                }
+
+                self.subtitle_file = self.subtitle_folder_current_sub.clone();
+                println!("updated subtitle file");
+
+                self.update_active_subtitle();
 
                 let path_str = self
                     .video_folder_current_video
@@ -407,21 +436,29 @@ impl App {
 
                 self.video_folder = folder.clone();
                 Task::none()
-            } // so i should choose a directory, it then reads the directory and then maybe in the
-              // order it print it, you would know the next one because you could just enumerate your
-              // position and +1 and ur good on the other and you could click next and it would go
-              // next and after chosing ur folder for video you just chose your folder for the
-              // subtites aswell
-              // ok this is what i will work on now
-              // a way to to forward and backwards on your video directory, and it would be the same
-              // for the subtitles
-              // but the problem comes from how do i get them in order
-              // that is not a problem because read_dir already reads them in order,
-              // open folder, plays from the first video, if you wanna go next click next and we
-              // would just enumerate your episode you are watching and we could just do video+1 same
-              // with the subtitles since they are all in the same folder
-              // CURIOUS- how does the read_dir read it in order? and also how does thunar just know
-              // like how to order the stuff
+            }
+            Message::OpenSubFolder => Task::perform(
+                async {
+                    let handle = rfd::AsyncFileDialog::new()
+                        .set_title("select a subtitle folder")
+                        .pick_folder()
+                        .await;
+
+                    match handle {
+                        Some(folder_handle) => Ok(folder_handle.path().to_path_buf()),
+                        None => Err("no folder chosen".to_string()),
+                    }
+                },
+                Message::OpenedSubFolder,
+            ),
+            Message::OpenedSubFolder(folder) => {
+                println!("subtitle folder location {:?}", folder);
+
+                let folder = folder.unwrap().to_string_lossy().into_owned();
+                self.subtitle_folder = folder;
+                println!("current subtitle file {:?}", self.subtitle_file.clone());
+                Task::none()
+            }
         }
     }
 
@@ -546,6 +583,7 @@ impl App {
                     )
                     .push(button("Open").on_press(Message::Open))
                     .push(button("OPEN VID FOLDER").on_press(Message::OpenVidFolder))
+                    .push(button("OPEN SUB FOLDER").on_press(Message::OpenSubFolder))
                     .push(button("Open Subtitles").on_press(Message::OpenSubtitle))
                     .push(button("next video").on_press(Message::Next))
                     .push(
