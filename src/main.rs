@@ -1,22 +1,20 @@
-use iced::widget::{Button, Column, Container, Row, Slider, Text, button, text, text_input};
-use iced::{Element, Task, executor};
+use iced::widget::{Button, Column, Container, Row, Slider, Text, button, text_input};
+use iced::{Element, Task};
 use iced_video_player::{Video, VideoPlayer};
 use rusqlite::Connection;
+use rusqlite::Error;
 use rusqlite::Result;
 use rusqlite::params;
-use std::borrow::Cow;
-use std::thread::{self, sleep};
-use std::time::{self, Duration, SystemTime};
-use std::{io, path};
-use tokio::time::timeout;
+use std::io;
+use std::time::{Duration, SystemTime};
+
 use url::Url;
 
-use ass_parser::{AssFile, Dialogue, Dialogues};
+use ass_parser::{AssFile, Dialogue};
 use srtlib::{Subtitles, Timestamp};
 use std::fs::{File, read_dir};
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{self, Receiver, Sender};
 
 fn main() -> iced::Result {
     iced::application("Iced Video Player", App::update, App::view).run_with(App::new)
@@ -44,6 +42,7 @@ enum Message {
     Next,
     OpenSubFolder,
     OpenedSubFolder(Result<std::path::PathBuf, String>),
+    OpenLast,
 }
 
 struct App {
@@ -55,8 +54,7 @@ struct App {
 
     subtitles: Vec<SubtitleEntry>,
     active_subtitle: Option<String>,
-    rx: Receiver<String>,
-    tx: Sender<String>,
+
     video_url: PathBuf,
     subtitle_file: PathBuf,
     last_from_db: Dbchoose,
@@ -79,41 +77,36 @@ struct SubtitleEntry {
 
 impl Default for App {
     fn default() -> Self {
-        let last_db = db_get_last();
+        let mut lastdbdb = Dbchoose {
+            time: (0.0),
+            vid_file: ("none".to_string()),
+            subfile: ("none".to_string()),
+        };
 
-        //let mut video = Video::new( &url::Url::from_file_path(std::path::PathBuf::from(
-        //       "/home/koushikk/Downloads/Download(1).mp4",
-        //   ))
-        //   .unwrap(),
-        //  )
-        //  .unwrap();
-
+        match db_get_last() {
+            Ok(last_db) => {
+                println!("Found last row: {:?}", last_db);
+                lastdbdb = last_db
+            }
+            Err(e) => {
+                println!("Error {}", e);
+            }
+        }
         println!("Video initialized with volume: 1.0");
-        let def_sub = last_db.subfile.as_str();
+        let def_sub = lastdbdb.subfile.as_str();
         println!("CHECKING IF DEFSUB FUCK UP AS STR {}", def_sub);
+        let default_vid = "/home/koushikk/Documents/Rust2/iced-video-crate/src/defvid.mp4";
+        let default_sub = "/home/koushikk/Documents/Rust2/iced-video-crate/src/defsub.ass";
 
-        let mut video = Video::new(
-            &url::Url::from_file_path(std::path::PathBuf::from(last_db.vid_file.clone())).unwrap(),
-        )
-        .unwrap();
+        let mut video = Video::new(&url::Url::from_file_path(default_vid).unwrap()).unwrap();
 
-        //let def_url = Url::from_file_path(
-        //     "/home/koushikk/Documents/Rust2/parseingsrt/src/Darling in the FranXX - Ep 001.ass",
-        //  );
-        //  // maybe i make it so you can have multiple last played like for eaxh file its
-        //  propritary
-        //
-        //  i could make it another db and just on exit it ques it into 2 dbs one for last and
-        //  another for the perm save and that would save for if the file name is not already in
-        //  the db
-        //  and thats how i would make the save states work
-        let mut subtitle_file = PathBuf::from(def_sub);
+        let subtitle_file = PathBuf::from(default_sub);
 
-        let subtitles = parse_example_subs(def_sub).unwrap();
+        let subtitles = parse_example_subs(default_sub).unwrap();
 
-        let (tx, rx) = mpsc::channel();
-        let path = PathBuf::from(last_db.vid_file.clone());
-        let def_pos = last_db.time;
+        let path = PathBuf::from(default_vid);
+
+        let def_pos = 0.0;
         println!("{}", def_pos.clone());
 
         video
@@ -130,11 +123,9 @@ impl Default for App {
             subtitle_file: subtitle_file.clone(),
             active_subtitle: None,
             video_url: path,
-            last_from_db: last_db,
+            last_from_db: lastdbdb,
             parsed: Some(0.0),
             value: "".to_string(),
-            tx,
-            rx,
             video_folder: "none".to_string(),
             video_folder_positon: 0,
             video_folder_current_video: PathBuf::from("."),
@@ -181,10 +172,6 @@ impl App {
                     .expect("Error collect subtitles");
                 subtitles.sort();
 
-                //for video in videos.clone() {
-                //  println!("contents of your folder {:?}", video.display());
-                //}
-
                 let herebro: Vec<(usize, std::path::PathBuf)> =
                     videos.into_iter().enumerate().collect();
                 let heresub: Vec<(usize, std::path::PathBuf)> =
@@ -216,7 +203,6 @@ impl App {
 
                 let url_her = path_str.as_str();
                 println!("Path string after as str {}", url_her);
-                // let url = Url::parse(url_her).expect("error parseing url");
                 let url = Url::from_file_path(self.video_folder_current_video.clone())
                     .expect("error URL");
 
@@ -228,9 +214,18 @@ impl App {
                     .into();
                 self.video = new_video;
 
-                // now i should make a button which is differnet to toggle pause which would change
-                // the current playing video to the next videoin the folder
-                //
+                Task::none()
+            }
+            Message::OpenLast => {
+                let last_vid = self.last_from_db.vid_file.clone();
+                let last_sub = self.last_from_db.subfile.clone();
+                let last_time = self.last_from_db.time;
+                let video = Video::new(&url::Url::from_file_path(&last_vid).unwrap()).unwrap();
+                self.video = video;
+                self.position = last_time;
+                self.subtitles = parse_example_subs(last_sub.as_str()).unwrap();
+                self.video_url = PathBuf::from(last_vid.clone());
+                self.subtitle_file = PathBuf::from(last_sub);
 
                 Task::none()
             }
@@ -297,9 +292,8 @@ impl App {
                     self.subtitle_file.clone().to_string_lossy().into_owned(),
                 );
                 db(new_pos, new_url, new_subfile);
-                //b_for_each(new_pos, new_url, new_subfile);
+
                 println!("both dbed worked");
-                // into owned turns lossy into String i mean i should have assumed so TBH
 
                 iced::exit()
             }
@@ -320,17 +314,6 @@ impl App {
                 Task::none()
             }
 
-            // next task is to make it so i can push the subtitles forwards or backwards,
-            // meaning like you can sync them up yourself
-            //im pretty sure the ass_parser library has something for this
-            //but i probably want to do this in memory right?
-            //or i could just like make a new file each time and since the .ass files arent
-            //large this wouldnt really be a problem and it would deal with like the history
-            //of the file itsself, could i not just put a sleep on the playing subtitles func and
-            //have it mut? honeslty it would be beneficial if i did that but i dont feel like it
-            //right now because all it is, if i want it to be as fast ass possible i should just
-            //change the file tbh
-            //reading and writing can be put onto threads since they can be blocking
             Message::Open => Task::perform(
                 async {
                     let handle = rfd::AsyncFileDialog::new()
@@ -343,8 +326,6 @@ impl App {
                     url::Url::from_file_path(handle.path())
                         .map_err(|_| "Invalid file path".to_string())
                 },
-                // do i make it so that the file open is the same case as this or something
-                // differnt i mean since it returns something it would be hard to make it the smae
                 Message::Opened,
             ),
             Message::Opened(result) => {
@@ -385,11 +366,6 @@ impl App {
                         Some(file_handle) => Ok(file_handle.path().to_path_buf()),
                         None => Err("no file chosen".to_string()),
                     }
-
-                    // println!("url beofre to str {:?}", handle);
-
-                    //url::Url::from_file_path(handle.path())
-                    //    .map_err(|_| "Invalid file path".to_string())
                 },
                 Message::OpenedSubtitles,
             ),
@@ -586,6 +562,7 @@ impl App {
                     .push(button("OPEN SUB FOLDER").on_press(Message::OpenSubFolder))
                     .push(button("Open Subtitles").on_press(Message::OpenSubtitle))
                     .push(button("next video").on_press(Message::Next))
+                    .push(button("last vid").on_press(Message::OpenLast))
                     .push(
                         Text::new(format!(
                             "{}:{:02} / {}:{:02}",
@@ -605,28 +582,13 @@ impl App {
         t += Duration::from_secs_f64(self.parsed.unwrap());
         println!("updated t {:?} + {:?} ", t, self.parsed.unwrap());
 
-        // if i make this run on a different thread, then it wouldnt conflict with the pauseing of
-        // the video right?
-
         if let Some(entry) = self.subtitles.iter().find(|s| {
             s.start + Duration::from_millis(000) <= t && t <= s.end + Duration::from_millis(0000)
-            // 3000 for fate/zero
-            // i should make it so i can put like a scroll bar so you can do it dynamically within
-            // the app easility
-            // need to add feature which keeps your last played video and it gets the time aswell
-            // i woudlny be able to do it on close because what if they are open multiple videos at
-            // once it would have to be per video then also on close into the local db
         }) {
             self.active_subtitle = Some(entry.text.clone());
-            //{
-            //  thread::sleep(Duration::from_secs(1));
-            //};
-            //println!("{:?}", Some(entry.text.clone()));
-            //println!("{:?} ", SystemTime::now());
+
             let herebro = entry.text.clone();
             println!("{:?}, TIME: {:?}", herebro.clone(), SystemTime::now());
-
-            self.tx.send(herebro).expect("error sending herebro");
         } else {
             self.active_subtitle = None;
         }
@@ -654,7 +616,6 @@ fn ass_time_to_duration(t: &str) -> Option<Duration> {
 }
 
 fn strip_ass_tags(s: &str) -> String {
-    // Simple tag stripper: removes {...} blocks and converts \N to newline
     let mut out = String::with_capacity(s.len());
     let mut in_brace = false;
     for c in s.chars() {
@@ -665,9 +626,7 @@ fn strip_ass_tags(s: &str) -> String {
             _ => {}
         }
     }
-    //let new = out.replace("\\N", "\n").trim().to_string();
     out.replace("\\N", "\n").trim().to_string()
-    // commas (, ) current if something is after a comma its being cut off
 }
 
 fn parse_example_subs(file: &str) -> Result<Vec<SubtitleEntry>, String> {
@@ -681,17 +640,13 @@ fn parse_example_subs(file: &str) -> Result<Vec<SubtitleEntry>, String> {
         for s in v {
             entries.push(SubtitleEntry {
                 start: ts_to_duration(&s.start_time),
-                // i could just add to time here
                 end: ts_to_duration(&s.end_time),
                 text: s.text.trim().to_string(),
             });
         }
     }
 
-    if let Ok(ass_file) = AssFile::from_file(
-        //"/home/koushikk/Documents/Rust2/parseingsrt/src/Darling in the FranXX [Glue]/[Glue] Darling in the FranXX - 02 [40426618]_Track02_eng.ass",
-        file,
-    ) {
+    if let Ok(ass_file) = AssFile::from_file(file) {
         let dialogues: Vec<Dialogue> = ass_file.events.get_dialogues();
         for d in dialogues {
             if let (Some(b), Some(e), Some(txt)) = (d.get_start(), d.get_end(), d.get_text()) {
@@ -703,7 +658,6 @@ fn parse_example_subs(file: &str) -> Result<Vec<SubtitleEntry>, String> {
                 );
                 {
                     let clean = strip_ass_tags(&txt);
-                    //let herebrodow = txt.replace(",", " ").trim().to_string();
                     println!("subtitles before push {:?}", &txt.clone());
                     entries.push(SubtitleEntry {
                         start,
@@ -721,17 +675,6 @@ fn parse_example_subs(file: &str) -> Result<Vec<SubtitleEntry>, String> {
     Ok(entries)
 }
 
-// before the for each db i need to make something which can somewhat sink the folders of the
-// subttiles and video folder,
-// first il make it display the episode and subtitle file on the screen
-// subtitles are on screen but i should me able to open a folder then it plays the videos in the
-// appropriate order
-// you open a folder, it first would just print out the dir
-// then i mean most folder are already in order so maybe it just works lowk
-// acuallty i dont know if i want to add this because its like to much formatting and shit maybe if
-// i find a different way
-//
-// needs to take the 3 params
 #[derive(Debug, Clone)]
 struct Dbchoose {
     time: f64,
@@ -808,32 +751,34 @@ fn db_get_all() -> Result<Vec<Dbchoose>> {
         .expect("error getting query ")
         .collect::<Result<Vec<_>, _>>()
         .expect("error collect");
-    // for impl iterators all you have to do is collect them thats basically
-    // all bruh
-    // review this i have no fucking clue whats happening tbh
-
     Ok(all)
 }
 
-fn db_get_last() -> Dbchoose {
-    let conn = Connection::open("mydb.sqlite3").expect("Error connecting to db");
+fn db_get_last() -> Result<Dbchoose, String> {
+    let conn =
+        Connection::open("mydb.sqlite3").map_err(|e| format!("Erorr connecting to db: {}", e))?;
 
     let mut stmt = conn
         .prepare("SELECT time,file,subfile FROM last")
-        .expect("statement error");
+        .map_err(|e| format!("Statement error {}", e))?;
 
-    let last = stmt.query_one([], |row| {
+    match stmt.query_row([], |row| {
         Ok(Dbchoose {
-            time: row.get(0).expect("error time db"),
-            vid_file: row.get(1).expect("error file db"),
-            subfile: row.get(2).expect("error sub db"),
+            time: row.get(0)?,
+            vid_file: row.get(1)?,
+            subfile: row.get(2)?,
         })
-    });
-
-    let lastreturn = last.unwrap().clone();
-    println!("{:?}", lastreturn);
-
-    lastreturn
+    }) {
+        Ok(last) => {
+            println!("{:?}", last);
+            Ok(last)
+        }
+        Err(Error::QueryReturnedNoRows) => {
+            println!("Could not find last");
+            Err("Could not find last".to_string())
+        }
+        Err(e) => Err(format!("Database error {}", e)),
+    }
 }
 
 #[allow(dead_code)]
