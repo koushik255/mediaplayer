@@ -95,6 +95,7 @@ impl Default for App {
         println!("Video initialized with volume: 1.0");
         let def_sub = lastdbdb.subfile.as_str();
         println!("CHECKING IF DEFSUB FUCK UP AS STR {}", def_sub);
+        // you would need to change this to the dir
         let default_vid = "/home/koushikk/Documents/Rust2/iced-video-crate/src/defvid.mp4";
         let default_sub = "/home/koushikk/Documents/Rust2/iced-video-crate/src/defsub.ass";
 
