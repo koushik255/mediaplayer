@@ -62,6 +62,7 @@ pub struct App {
     pub subtitle_folder_position: usize,
     pub subtitle_folder_current_sub: PathBuf,
     pub video_folder_better: VideoFolder,
+    pub sorted_folders: SortedFolder,
 }
 
 #[derive(Debug, Clone)]
@@ -115,6 +116,11 @@ impl Default for App {
             position: 0,
             current_video: PathBuf::from("."),
         };
+        //let random: Vec<PathBuf> = Vec::new();
+        let sorted_def = SortedFolder {
+            video: Vec::new(),
+            subs: Vec::new(),
+        };
 
         Self {
             video,
@@ -136,6 +142,7 @@ impl Default for App {
             subtitle_folder: "none".to_string(),
             subtitle_folder_position: 0,
             subtitle_folder_current_sub: subtitle_file,
+            sorted_folders: sorted_def,
         }
     }
 }
@@ -144,6 +151,12 @@ pub struct VideoFolder {
     folder: String,
     position: usize,
     current_video: PathBuf,
+}
+
+#[derive(Debug)]
+pub struct SortedFolder {
+    video: Vec<PathBuf>,
+    subs: Vec<PathBuf>,
 }
 
 impl App {
@@ -427,6 +440,21 @@ impl App {
                 let folder = folder.unwrap().to_string_lossy().into_owned();
 
                 // self.video_folder = folder.clone();
+                // let files = read_dir(&folder);
+                // let mut videos = read_dir(self.video_folder_better.folder.clone())
+                //     .expect("error reading video folder ")
+                //     .map(|res| res.map(|e| e.path()))
+                //     .collect::<Result<Vec<_>, io::Error>>()
+                //     .expect("error collecting vids");
+                // videos.sort();
+                match read_dir(&folder) {
+                    Ok(files) => {
+                        files.for_each(|f| println!("{:?}", f));
+                    }
+                    Err(e) => {
+                        println!("FUKC FUCK FUCK FILES {e}")
+                    }
+                }
                 self.video_folder_better.folder = folder.clone();
 
                 Task::none()

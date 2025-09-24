@@ -1,5 +1,6 @@
-use iced::Element;
 use iced::widget::{Button, Column, Container, Row, Slider, Text, button, text_input};
+use iced::{Alignment, Length};
+use iced::{Element, Padding};
 use iced_video_player::VideoPlayer;
 
 use crate::app::{App, Message};
@@ -27,28 +28,19 @@ impl App {
                         .on_end_of_stream(Message::EndOfStream)
                         .on_new_frame(Message::NewFrame),
                 )
-                .align_x(iced::Alignment::Center)
+                .align_x(iced::Alignment::Start)
                 .align_y(iced::Alignment::Center)
                 .width(iced::Length::Fill)
-                .height(iced::Length::Fill),
+                .height(iced::Length::Fill)
+                .padding(Padding::new(0.0).left(150.0).top(100.0)),
+                //  .padding(Padding::new(0.0).top(100.0)),
             )
+            // .push(my_column())
             .push(
                 Container::new(Text::new(subtitle_text).size(50))
                     .align_x(iced::Alignment::Center)
                     .align_y(iced::Alignment::Center)
-                    .padding(iced::Padding::new(10.0).left(20.0).right(100.0)),
-            )
-            .push(
-                Container::new(Text::new(subtitles_file).size(20))
-                    .align_x(iced::Alignment::Center)
-                    .align_y(iced::Alignment::Center)
-                    .padding(iced::Padding::new(10.0).left(20.0).right(100.0)),
-            )
-            .push(
-                Container::new(Text::new(filename_text).size(20))
-                    .align_x(iced::Alignment::Center)
-                    .align_y(iced::Alignment::Center)
-                    .padding(iced::Padding::new(10.0).left(20.0).right(100.0)),
+                    .padding(iced::Padding::new(0.0).left(150.0)),
             )
             .push(
                 Container::new(
@@ -87,6 +79,21 @@ impl App {
                             Button::new(Text::new("QUIT"))
                                 .width(40.0)
                                 .on_press(Message::Quit),
+                        )
+                        .push(
+                            Column::new()
+                                .push(
+                                    Container::new(Text::new(subtitles_file).size(20))
+                                        .align_x(iced::Alignment::Center)
+                                        .align_y(iced::Alignment::Center)
+                                        .padding(iced::Padding::new(10.0).left(20.0).right(100.0)),
+                                )
+                                .push(
+                                    Container::new(Text::new(filename_text).size(20))
+                                        .align_x(iced::Alignment::Center)
+                                        .align_y(iced::Alignment::Center)
+                                        .padding(iced::Padding::new(10.0).left(20.0).right(100.0)),
+                                ),
                         )
                         .push(Text::new("Volume:"))
                         .push(
@@ -144,4 +151,12 @@ impl App {
             )
             .into()
     }
+}
+
+fn my_column<'a>() -> Element<'a, Message> {
+    Column::new()
+        .push("a column can be used to ")
+        .push("lay out widgets vertically")
+        .spacing(10)
+        .into()
 }
