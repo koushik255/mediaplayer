@@ -61,6 +61,7 @@ pub struct App {
     pub subtitle_folder: String,
     pub subtitle_folder_position: usize,
     pub subtitle_folder_current_sub: PathBuf,
+    pub video_folder_better: VideoFolder,
 }
 
 #[derive(Debug, Clone)]
@@ -109,6 +110,12 @@ impl Default for App {
             .seek(Duration::from_secs_f64(def_pos), false)
             .expect("seek");
 
+        let def_vid_folder = VideoFolder {
+            folder: "None".to_string(),
+            position: 0,
+            current_video: PathBuf::from("."),
+        };
+
         Self {
             video,
             position: def_pos,
@@ -125,11 +132,18 @@ impl Default for App {
             video_folder: "none".to_string(),
             video_folder_positon: 0,
             video_folder_current_video: PathBuf::from("."),
+            video_folder_better: def_vid_folder,
             subtitle_folder: "none".to_string(),
             subtitle_folder_position: 0,
             subtitle_folder_current_sub: subtitle_file,
         }
     }
+}
+#[derive(Debug)]
+pub struct VideoFolder {
+    folder: String,
+    position: usize,
+    current_video: PathBuf,
 }
 
 impl App {
@@ -147,6 +161,7 @@ impl App {
                 );
 
                 println!("subtitle file currently {:?}", self.subtitle_file.clone());
+                println!("Video folder struct {:?}", self.video_folder_better);
                 //let alldbs = db_get_all();
                 // println!("{:?}", alldbs.unwrap());
                 //
@@ -154,7 +169,7 @@ impl App {
                 Task::none()
             }
             Message::Next => {
-                let mut videos = read_dir(self.video_folder.clone())
+                let mut videos = read_dir(self.video_folder_better.folder.clone())
                     .expect("error reading video folder ")
                     .map(|res| res.map(|e| e.path()))
                     .collect::<Result<Vec<_>, io::Error>>()
@@ -174,10 +189,10 @@ impl App {
                     subtitles.into_iter().enumerate().collect();
                 // println!("your folder better print {:?}", herebro);
 
-                if let Some((i, vid)) = herebro.get(self.video_folder_positon) {
+                if let Some((i, vid)) = herebro.get(self.video_folder_better.position) {
                     println!("first video {} {}", i, vid.display());
-                    self.video_folder_positon = *i + 1;
-                    self.video_folder_current_video = vid.clone();
+                    self.video_folder_better.position = *i + 1;
+                    self.video_folder_better.current_video = vid.clone();
                 }
                 if let Some((i, sub)) = heresub.get(self.subtitle_folder_position) {
                     println!("first subtitle {} {}", i, sub.display());
@@ -186,12 +201,16 @@ impl App {
                 }
 
                 self.subtitle_file = self.subtitle_folder_current_sub.clone();
+                self.subtitles =
+                    parse_example_subs(self.subtitle_file.clone().to_str().as_ref().unwrap())
+                        .expect("error parse");
                 println!("updated subtitle file");
 
                 self.update_active_subtitle();
 
                 let path_str = self
-                    .video_folder_current_video
+                    .video_folder_better
+                    .current_video
                     .to_path_buf()
                     .to_string_lossy()
                     .into_owned();
@@ -199,12 +218,13 @@ impl App {
 
                 let url_her = path_str.as_str();
                 println!("Path string after as str {}", url_her);
-                let url = Url::from_file_path(self.video_folder_current_video.clone())
+                let url = Url::from_file_path(self.video_folder_better.current_video.clone())
                     .expect("error URL");
 
                 let new_video = Video::new(&url).expect("Error creating new video in pause");
                 self.video_url = self
-                    .video_folder_current_video
+                    .video_folder_better
+                    .current_video
                     .to_string_lossy()
                     .into_owned()
                     .into();
@@ -406,7 +426,9 @@ impl App {
                 println!("folder location {:?}", folder);
                 let folder = folder.unwrap().to_string_lossy().into_owned();
 
-                self.video_folder = folder.clone();
+                // self.video_folder = folder.clone();
+                self.video_folder_better.folder = folder.clone();
+
                 Task::none()
             }
             Message::OpenSubFolder => Task::perform(
