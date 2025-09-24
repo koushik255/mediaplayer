@@ -1,7 +1,7 @@
 use iced::widget::{Button, Column, Container, Row, Slider, Text, button, text_input};
-use iced::{Alignment, Length};
 use iced::{Element, Padding};
 use iced_video_player::VideoPlayer;
+use std::path::PathBuf;
 
 use crate::app::{App, Message};
 
@@ -21,6 +21,14 @@ impl App {
             .to_string_lossy()
             .into_owned();
 
+        // let filestodisplay = self
+        //     .sorted_folders
+        //     .video
+        //     .iter()
+        //     .map(|p| p.display().to_string())
+        //     .collect::<Vec<_>>()
+        //     .join("\n");
+
         Column::new()
             .push(
                 Container::new(
@@ -35,6 +43,11 @@ impl App {
                 .padding(Padding::new(0.0).left(150.0).top(100.0)),
                 //  .padding(Padding::new(0.0).top(100.0)),
             )
+            // .push(
+            //     Container::new(Text::new(filestodisplay).size(8))
+            //         .align_x(iced::Alignment::End)
+            //         .align_y(iced::Alignment::End),
+            // )
             // .push(my_column())
             .push(
                 Container::new(Text::new(subtitle_text).size(50))

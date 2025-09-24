@@ -55,9 +55,7 @@ pub struct App {
     pub last_from_db: Dbchoose,
     pub value: String,
     pub parsed: Option<f64>,
-    pub video_folder: String,
-    pub video_folder_positon: usize,
-    pub video_folder_current_video: PathBuf,
+
     pub subtitle_folder: String,
     pub subtitle_folder_position: usize,
     pub subtitle_folder_current_sub: PathBuf,
@@ -135,9 +133,6 @@ impl Default for App {
             last_from_db: lastdbdb,
             parsed: Some(0.0),
             value: "".to_string(),
-            video_folder: "none".to_string(),
-            video_folder_positon: 0,
-            video_folder_current_video: PathBuf::from("."),
             video_folder_better: def_vid_folder,
             subtitle_folder: "none".to_string(),
             subtitle_folder_position: 0,
@@ -155,8 +150,8 @@ pub struct VideoFolder {
 
 #[derive(Debug)]
 pub struct SortedFolder {
-    video: Vec<PathBuf>,
-    subs: Vec<PathBuf>,
+    pub video: Vec<PathBuf>,
+    pub subs: Vec<(usize, PathBuf)>,
 }
 
 impl App {
@@ -178,6 +173,9 @@ impl App {
                 //let alldbs = db_get_all();
                 // println!("{:?}", alldbs.unwrap());
                 //
+                for video in &self.sorted_folders.video {
+                    println!("videos sorted {:?}", video);
+                }
 
                 Task::none()
             }
@@ -197,10 +195,15 @@ impl App {
                 subtitles.sort();
 
                 let herebro: Vec<(usize, std::path::PathBuf)> =
-                    videos.into_iter().enumerate().collect();
+                    videos.clone().into_iter().enumerate().collect();
                 let heresub: Vec<(usize, std::path::PathBuf)> =
                     subtitles.into_iter().enumerate().collect();
                 // println!("your folder better print {:?}", herebro);
+                let heredude: Vec<PathBuf> = videos.clone().into_iter().collect();
+                println!("HEREDUDE {:?}", heredude);
+
+                self.sorted_folders.video = heredude.clone();
+                self.sorted_folders.subs = heresub.clone();
 
                 if let Some((i, vid)) = herebro.get(self.video_folder_better.position) {
                     println!("first video {} {}", i, vid.display());
@@ -220,6 +223,7 @@ impl App {
                 println!("updated subtitle file");
 
                 self.update_active_subtitle();
+                // 1.75
 
                 let path_str = self
                     .video_folder_better
@@ -447,14 +451,14 @@ impl App {
                 //     .collect::<Result<Vec<_>, io::Error>>()
                 //     .expect("error collecting vids");
                 // videos.sort();
-                match read_dir(&folder) {
-                    Ok(files) => {
-                        files.for_each(|f| println!("{:?}", f));
-                    }
-                    Err(e) => {
-                        println!("FUKC FUCK FUCK FILES {e}")
-                    }
-                }
+                // match read_dir(&folder) {
+                //     Ok(files) => {
+                //         files.for_each(|f| println!("{:?}", f));
+                //     }
+                //     Err(e) => {
+                //         println!("FUKC FUCK FUCK FILES {e}")
+                //     }
+                // }
                 self.video_folder_better.folder = folder.clone();
 
                 Task::none()
