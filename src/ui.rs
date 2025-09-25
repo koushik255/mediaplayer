@@ -21,20 +21,28 @@ impl App {
             .to_string_lossy()
             .into_owned();
 
-        // let filestodisplay = self
-        //     .sorted_folders
-        //     .video
-        //     .iter()
-        //     .map(|p| p.display().to_string())
-        //     .collect::<Vec<_>>()
-        //     .join("\n");
+        // so basically the subtitles are updateing every frame when we dont need that we only need
+        // them to update when their is a new subtitles, when the subtitles message is given
+        // ok on NewSub i need to update the actince text
+        let mut heresubdudebud = String::new();
+        match self.active_subtitle.clone() {
+            Some(text) => {
+                //let sub_text = text;
+                heresubdudebud = text.replace("&apos;", "'");
+                println!("{heresubdudebud}");
+            }
+            None => {
+                //println!("no text yet bub");
+            }
+        }
 
         Column::new()
             .push(
                 Container::new(
                     VideoPlayer::new(&self.video)
                         .on_end_of_stream(Message::EndOfStream)
-                        .on_new_frame(Message::NewFrame),
+                        .on_new_frame(Message::NewFrame)
+                        .on_subtitle_text(Message::NewSub),
                 )
                 .align_x(iced::Alignment::Start)
                 .align_y(iced::Alignment::Center)
@@ -50,7 +58,7 @@ impl App {
             // )
             // .push(my_column())
             .push(
-                Container::new(Text::new(subtitle_text).size(50))
+                Container::new(Text::new(heresubdudebud).size(50))
                     .align_x(iced::Alignment::Center)
                     .align_y(iced::Alignment::Center)
                     .padding(iced::Padding::new(0.0).left(150.0)),
