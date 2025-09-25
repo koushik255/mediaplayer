@@ -190,17 +190,34 @@ impl App {
                     .expect("error collecting vids");
                 videos.sort();
 
-                let mut subtitles = read_dir(self.subtitle_folder.clone())
-                    .expect("error reading subtitles fodler")
-                    .map(|e| e.map(|r| r.path()))
-                    .collect::<Result<Vec<_>, io::Error>>()
-                    .expect("Error collect subtitles");
-                subtitles.sort();
+                let mut bubbilites: Vec<PathBuf> = Vec::new();
+
+                match read_dir(self.subtitle_folder.clone()) {
+                    Ok(e) => {
+                        bubbilites = e
+                            .map(|e| e.map(|r| r.path()))
+                            .collect::<Result<Vec<_>, io::Error>>()
+                            .expect("error ");
+                        bubbilites.sort();
+                        for bub in &bubbilites {
+                            println!("{}", bub.display());
+                        }
+                    }
+                    Err(e) => {
+                        println!(" no subtitles folder boss{e}");
+                    }
+                }
+                // let mut subtitles = read_dir(self.subtitle_folder.clone())
+                //     .expect("error reading subtitles fodler")
+                //     .map(|e| e.map(|r| r.path()))
+                //     .collect::<Result<Vec<_>, io::Error>>()
+                //     .expect("Error collect subtitles");
+                // subtitles.sort();
 
                 let herebro: Vec<(usize, std::path::PathBuf)> =
                     videos.clone().into_iter().enumerate().collect();
                 let heresub: Vec<(usize, std::path::PathBuf)> =
-                    subtitles.into_iter().enumerate().collect();
+                    bubbilites.into_iter().enumerate().collect();
                 // println!("your folder better print {:?}", herebro);
                 let heredude: Vec<PathBuf> = videos.clone().into_iter().collect();
                 println!("HEREDUDE {:?}", heredude);
@@ -283,6 +300,7 @@ impl App {
                     self.prev_sub = self.active_subtitle.clone();
                     self.active_subtitle = sub_text.clone();
                 } else {
+                    // self.prev_sub= self.prev_sub;
                 }
 
                 self.active_subtitle = sub_text.clone();
