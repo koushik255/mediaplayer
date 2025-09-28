@@ -50,23 +50,16 @@ impl App {
                 )
                 .align_x(iced::Alignment::Start)
                 .align_y(iced::Alignment::Center)
-                .width(iced::Length::Fill)
-                .height(iced::Length::Fill)
-                .padding(Padding::new(0.0).left(150.0).top(100.0)),
+                .width(iced::Length::Fixed(1280.0))
+                .height(iced::Length::Fixed(720.0)), //.padding(Padding::new(0.0).left(150.0).top(100.0)),
             )
-            .push(self.list())
-            // .push(
-            //     Container::new(Text::new(self.sorted_folders.video).size(50))
-            //         .align_x(iced::Alignment::Center)
-            //         .align_y(iced::Alignment::Center)
-            //         .padding(iced::Padding::new(0.0).left(150.0)),
-            // )
             .push(
                 Container::new(Text::new(heresubdudebud).size(50))
                     .align_x(iced::Alignment::Center)
                     .align_y(iced::Alignment::Center)
                     .padding(iced::Padding::new(0.0).left(150.0)),
             )
+            .push(self.list())
             .push(
                 Container::new(
                     text_input("Enter a number...", &self.value)
@@ -162,6 +155,7 @@ impl App {
                     .push(button("Open Subtitles").on_press(Message::OpenSubtitle))
                     .push(button("next video").on_press(Message::Next))
                     .push(button("last vid").on_press(Message::OpenLast))
+                    .push(button("press to add at selection").on_press(Message::AddAtSelection))
                     .push(
                         Text::new(format!(
                             "{}:{:02} / {}:{:02}",
@@ -188,17 +182,16 @@ impl App {
             Font::default(),
         )
         .width(Length::Shrink)
-        .height(Length::Fixed(100.0));
+        .height(Length::Shrink);
 
         let content = Column::new()
             .width(Length::Fill)
             .height(Length::Fill)
-            .align_x(Alignment::Center)
+            .align_x(Alignment::End)
             .spacing(10)
             .push(selection_list)
             .push(Text::new("Which is your favorite language?"))
             .push(Text::new(format!("{:?}", self.selected_lang)))
-            .push(button("press to add at selection").on_press(Message::AddAtSelection))
             .push(button("Manual select Index 2").on_press(Message::ManualSelection));
 
         //content = content.push(Space::with_height(Length::Fixed(400.0)));
@@ -209,42 +202,6 @@ impl App {
             .center_x(Length::Fill)
             .center_y(Length::Fill)
             .into()
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Language {
-    #[default]
-    Rust,
-    Elm,
-    Ruby,
-    Haskell,
-    C,
-    Javascript,
-    Other,
-}
-
-impl Language {
-    pub const ALL: [Language; 7] = [
-        Language::C,
-        Language::Elm,
-        Language::Ruby,
-        Language::Haskell,
-        Language::Rust,
-        Language::Javascript,
-        Language::Other,
-    ];
-
-    pub fn name(&self) -> String {
-        match self {
-            Language::Rust => "Rust".to_owned(),
-            Language::Elm => "Elm".to_owned(),
-            Language::Ruby => "Ruby".to_owned(),
-            Language::Haskell => "Haskell".to_owned(),
-            Language::C => "C".to_owned(),
-            Language::Javascript => "Javascript".to_owned(),
-            Language::Other => "Some other language".to_owned(),
-        }
     }
 }
 

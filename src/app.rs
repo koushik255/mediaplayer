@@ -15,8 +15,6 @@ use std::fs::{File, read_dir};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use crate::ui::Language;
-
 #[derive(Clone, Debug)]
 pub enum Message {
     TogglePause,
@@ -194,10 +192,16 @@ impl App {
                 Task::none()
             }
             Message::AddAtSelection => {
-                self.vec
-                    .insert(self.selected_index, "JAVA OH NOES!".to_owned());
-                self.selected_lang.clear();
-                self.manual_select = None;
+                println!("Now playing slecetd video");
+                println!("{}", self.selected_lang);
+                self.video_folder_better.position = self.selected_index + 1;
+
+                let url = Url::from_file_path(self.selected_lang.clone()).expect("error URL");
+
+                let new_video = Video::new(&url).expect("Error creating new video in pause");
+                self.video_url = PathBuf::from(self.selected_lang.clone());
+
+                self.video = new_video;
 
                 Task::none()
             }
@@ -269,6 +273,8 @@ impl App {
 
                 self.sorted_folders.video = heredude.clone();
                 self.sorted_folders.subs = heresub.clone();
+                // i should change this func i should make it so that it grabs the index the index
+                // the video is at
 
                 if let Some((i, vid)) = herebro.get(self.video_folder_better.position) {
                     println!("first video {} {}", i, vid.display());
@@ -566,8 +572,10 @@ impl App {
                     .collect::<Result<Vec<_>, io::Error>>()
                     .expect("error collecting vids");
                 videos.sort();
+                // if i set this to a sels variables i can just use this in next
                 let herebro: Vec<(usize, std::path::PathBuf)> =
                     videos.clone().into_iter().enumerate().collect();
+
                 for (i, vid) in herebro {
                     self.vec.push(vid.to_string_lossy().into_owned());
                 }
