@@ -1,7 +1,11 @@
+use iced::Alignment;
+use iced::Font;
+use iced::Length;
 use iced::widget::{Button, Column, Container, Row, Slider, Text, button, text_input};
 use iced::{Element, Padding};
+
+use iced_aw::{selection_list::SelectionList, style::selection_list::primary};
 use iced_video_player::VideoPlayer;
-use std::path::PathBuf;
 
 use crate::app::{App, Message};
 
@@ -49,14 +53,14 @@ impl App {
                 .width(iced::Length::Fill)
                 .height(iced::Length::Fill)
                 .padding(Padding::new(0.0).left(150.0).top(100.0)),
-                //  .padding(Padding::new(0.0).top(100.0)),
             )
+            .push(self.list())
             // .push(
-            //     Container::new(Text::new(filestodisplay).size(8))
-            //         .align_x(iced::Alignment::End)
-            //         .align_y(iced::Alignment::End),
+            //     Container::new(Text::new(self.sorted_folders.video).size(50))
+            //         .align_x(iced::Alignment::Center)
+            //         .align_y(iced::Alignment::Center)
+            //         .padding(iced::Padding::new(0.0).left(150.0)),
             // )
-            // .push(my_column())
             .push(
                 Container::new(Text::new(heresubdudebud).size(50))
                     .align_x(iced::Alignment::Center)
@@ -171,6 +175,76 @@ impl App {
                     ),
             )
             .into()
+    }
+
+    fn list(&self) -> Element<'_, Message> {
+        let selection_list = SelectionList::new_with(
+            &self.vec[..],
+            Message::LanguageSelected,
+            12.0,
+            5.0,
+            primary,
+            self.manual_select,
+            Font::default(),
+        )
+        .width(Length::Shrink)
+        .height(Length::Fixed(100.0));
+
+        let content = Column::new()
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .align_x(Alignment::Center)
+            .spacing(10)
+            .push(selection_list)
+            .push(Text::new("Which is your favorite language?"))
+            .push(Text::new(format!("{:?}", self.selected_lang)))
+            .push(button("press to add at selection").on_press(Message::AddAtSelection))
+            .push(button("Manual select Index 2").on_press(Message::ManualSelection));
+
+        //content = content.push(Space::with_height(Length::Fixed(400.0)));
+
+        Container::new(content)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center_x(Length::Fill)
+            .center_y(Length::Fill)
+            .into()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Language {
+    #[default]
+    Rust,
+    Elm,
+    Ruby,
+    Haskell,
+    C,
+    Javascript,
+    Other,
+}
+
+impl Language {
+    pub const ALL: [Language; 7] = [
+        Language::C,
+        Language::Elm,
+        Language::Ruby,
+        Language::Haskell,
+        Language::Rust,
+        Language::Javascript,
+        Language::Other,
+    ];
+
+    pub fn name(&self) -> String {
+        match self {
+            Language::Rust => "Rust".to_owned(),
+            Language::Elm => "Elm".to_owned(),
+            Language::Ruby => "Ruby".to_owned(),
+            Language::Haskell => "Haskell".to_owned(),
+            Language::C => "C".to_owned(),
+            Language::Javascript => "Javascript".to_owned(),
+            Language::Other => "Some other language".to_owned(),
+        }
     }
 }
 

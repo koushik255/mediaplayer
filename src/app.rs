@@ -15,6 +15,8 @@ use std::fs::{File, read_dir};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
+use crate::ui::Language;
+
 #[derive(Clone, Debug)]
 pub enum Message {
     TogglePause,
@@ -39,6 +41,9 @@ pub enum Message {
     OpenedSubFolder(Result<std::path::PathBuf, String>),
     OpenLast,
     NewSub(Option<String>),
+    LanguageSelected(usize, String),
+    AddAtSelection,
+    ManualSelection,
 }
 
 pub struct App {
@@ -63,6 +68,10 @@ pub struct App {
     pub subtitle_folder_current_sub: PathBuf,
     pub video_folder_better: VideoFolder,
     pub sorted_folders: SortedFolder,
+    pub vec: Vec<String>,
+    pub selected_lang: String,
+    pub selected_index: usize,
+    pub manual_select: Option<usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -121,6 +130,7 @@ impl Default for App {
             video: Vec::new(),
             subs: Vec::new(),
         };
+        let mut vec = Vec::with_capacity(10);
 
         Self {
             video,
@@ -141,6 +151,10 @@ impl Default for App {
             subtitle_folder_position: 0,
             subtitle_folder_current_sub: subtitle_file,
             sorted_folders: sorted_def,
+            vec,
+            selected_lang: "".to_string(),
+            selected_index: 0,
+            manual_select: None,
         }
     }
 }
@@ -164,6 +178,37 @@ impl App {
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
+            Message::LanguageSelected(index, language) => {
+                self.selected_lang = language;
+                self.selected_index = index;
+                self.manual_select = None;
+
+                if self.selected_lang == "Rust" {
+                    self.vec.push("Rusty".into());
+                }
+                println!(
+                    "you selected : {} {}",
+                    self.selected_lang, self.selected_index
+                );
+
+                Task::none()
+            }
+            Message::AddAtSelection => {
+                self.vec
+                    .insert(self.selected_index, "JAVA OH NOES!".to_owned());
+                self.selected_lang.clear();
+                self.manual_select = None;
+
+                Task::none()
+            }
+            Message::ManualSelection => {
+                if let Some(option) = self.vec.get(2) {
+                    option.clone_into(&mut self.selected_lang);
+                    self.selected_index = 2;
+                    self.manual_select = Some(2);
+                }
+                Task::none()
+            }
             Message::TogglePause => {
                 self.video.set_paused(!self.video.paused());
                 println!(
@@ -220,7 +265,7 @@ impl App {
                     bubbilites.into_iter().enumerate().collect();
                 // println!("your folder better print {:?}", herebro);
                 let heredude: Vec<PathBuf> = videos.clone().into_iter().collect();
-                println!("HEREDUDE {:?}", heredude);
+                println!("HEREDUDE {:?}\n", heredude);
 
                 self.sorted_folders.video = heredude.clone();
                 self.sorted_folders.subs = heresub.clone();
@@ -514,6 +559,19 @@ impl App {
                 //         println!("FUKC FUCK FUCK FILES {e}")
                 //     }
                 // }
+                //
+                let mut videos = read_dir(folder.clone())
+                    .expect("error reading video folder ")
+                    .map(|res| res.map(|e| e.path()))
+                    .collect::<Result<Vec<_>, io::Error>>()
+                    .expect("error collecting vids");
+                videos.sort();
+                let herebro: Vec<(usize, std::path::PathBuf)> =
+                    videos.clone().into_iter().enumerate().collect();
+                for (i, vid) in herebro {
+                    self.vec.push(vid.to_string_lossy().into_owned());
+                }
+
                 self.video_folder_better.folder = folder.clone();
 
                 Task::none()
