@@ -1,6 +1,8 @@
 use iced::Alignment;
 use iced::Font;
 use iced::Length;
+use iced::Renderer;
+use iced::Theme;
 use iced::widget::{Button, Column, Container, Row, Slider, Text, button, text_input};
 use iced::{Element, Padding};
 
@@ -32,13 +34,17 @@ impl App {
         match self.active_subtitle.clone() {
             Some(text) => {
                 //let sub_text = text;
-                heresubdudebud = text.replace("&apos;", "'");
+                heresubdudebud = text.replace("&apos;", "'").replace("&quot;", "\"");
+                // heresubdudebud = text.replace("&quot;", "\"");
                 println!("{heresubdudebud}");
             }
             None => {
                 //println!("no text yet bub");
             }
         }
+
+        let overlay_btn: iced::widget::Button<'_, _, Theme, Renderer> =
+            button("Click me!").on_press(Message::OverlayPressed);
 
         Column::new()
             .push(

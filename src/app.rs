@@ -42,6 +42,7 @@ pub enum Message {
     LanguageSelected(usize, String),
     AddAtSelection,
     ManualSelection,
+    OverlayPressed,
 }
 
 pub struct App {
@@ -165,7 +166,7 @@ pub struct VideoFolder {
 
 #[derive(Debug)]
 pub struct SortedFolder {
-    pub video: Vec<PathBuf>,
+    pub video: Vec<(usize, PathBuf)>,
     pub subs: Vec<(usize, PathBuf)>,
 }
 
@@ -176,6 +177,10 @@ impl App {
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
+            Message::OverlayPressed => {
+                println!("Overlay button pressed");
+                Task::none()
+            }
             Message::LanguageSelected(index, language) => {
                 self.selected_lang = language;
                 self.selected_index = index;
@@ -196,12 +201,14 @@ impl App {
                 println!("{}", self.selected_lang);
                 self.video_folder_better.position = self.selected_index + 1;
 
+                // can func this
                 let url = Url::from_file_path(self.selected_lang.clone()).expect("error URL");
 
                 let new_video = Video::new(&url).expect("Error creating new video in pause");
                 self.video_url = PathBuf::from(self.selected_lang.clone());
 
                 self.video = new_video;
+                // func
 
                 Task::none()
             }
@@ -232,12 +239,15 @@ impl App {
                 Task::none()
             }
             Message::Next => {
-                let mut videos = read_dir(self.video_folder_better.folder.clone())
-                    .expect("error reading video folder ")
-                    .map(|res| res.map(|e| e.path()))
-                    .collect::<Result<Vec<_>, io::Error>>()
-                    .expect("error collecting vids");
-                videos.sort();
+                // can func this
+                // let mut videos = read_dir(self.video_folder_better.folder.clone())
+                //     .expect("error reading video folder ")
+                //     .map(|res| res.map(|e| e.path()))
+                //     .collect::<Result<Vec<_>, io::Error>>()
+                //     .expect("error collecting vids");
+                // videos.sort();
+                // func
+                //
 
                 let mut bubbilites: Vec<PathBuf> = Vec::new();
 
@@ -263,18 +273,22 @@ impl App {
                 //     .expect("Error collect subtitles");
                 // subtitles.sort();
 
-                let herebro: Vec<(usize, std::path::PathBuf)> =
-                    videos.clone().into_iter().enumerate().collect();
+                // let herebro: Vec<(usize, std::path::PathBuf)> =
+                //     videos.clone().into_iter().enumerate().collect();
+
                 let heresub: Vec<(usize, std::path::PathBuf)> =
                     bubbilites.into_iter().enumerate().collect();
                 // println!("your folder better print {:?}", herebro);
-                let heredude: Vec<PathBuf> = videos.clone().into_iter().collect();
-                println!("HEREDUDE {:?}\n", heredude);
+                // let heredude: Vec<PathBuf> = videos.clone().into_iter().collect();
+                // println!("HEREDUDE {:?}\n", heredude);
 
-                self.sorted_folders.video = heredude.clone();
+                //self.sorted_folders.video = heredude.clone();
                 self.sorted_folders.subs = heresub.clone();
                 // i should change this func i should make it so that it grabs the index the index
                 // the video is at
+                //
+
+                let herebro = self.sorted_folders.video.clone();
 
                 if let Some((i, vid)) = herebro.get(self.video_folder_better.position) {
                     println!("first video {} {}", i, vid.display());
@@ -549,23 +563,7 @@ impl App {
                 println!("folder location {:?}", folder);
                 let folder = folder.unwrap().to_string_lossy().into_owned();
 
-                // self.video_folder = folder.clone();
-                // let files = read_dir(&folder);
-                // let mut videos = read_dir(self.video_folder_better.folder.clone())
-                //     .expect("error reading video folder ")
-                //     .map(|res| res.map(|e| e.path()))
-                //     .collect::<Result<Vec<_>, io::Error>>()
-                //     .expect("error collecting vids");
-                // videos.sort();
-                // match read_dir(&folder) {
-                //     Ok(files) => {
-                //         files.for_each(|f| println!("{:?}", f));
-                //     }
-                //     Err(e) => {
-                //         println!("FUKC FUCK FUCK FILES {e}")
-                //     }
-                // }
-                //
+                // func
                 let mut videos = read_dir(folder.clone())
                     .expect("error reading video folder ")
                     .map(|res| res.map(|e| e.path()))
@@ -575,8 +573,9 @@ impl App {
                 // if i set this to a sels variables i can just use this in next
                 let herebro: Vec<(usize, std::path::PathBuf)> =
                     videos.clone().into_iter().enumerate().collect();
+                self.sorted_folders.video = herebro.clone();
 
-                for (i, vid) in herebro {
+                for (_i, vid) in herebro {
                     self.vec.push(vid.to_string_lossy().into_owned());
                 }
 
