@@ -3,6 +3,13 @@ name = "iced-video-crate"
 version = "0.1.0"
 edition = "2024"
 
+[profile.release]
+debug = 1
+
+[features]
+dhat-heap = []
+
+
 [dependencies]
 iced = { version = "0.13", features = ["system"] }
 
@@ -22,6 +29,7 @@ rusqlite = "0.37.0"
 fs = "0.0.5"
 io = "0.0.2"
 iced_aw ={ version = "0.12.0", features = ["glow"] }
+dhat = "0.3.3"
 
 
 

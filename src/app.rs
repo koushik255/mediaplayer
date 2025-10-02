@@ -239,16 +239,6 @@ impl App {
                 Task::none()
             }
             Message::Next => {
-                // can func this
-                // let mut videos = read_dir(self.video_folder_better.folder.clone())
-                //     .expect("error reading video folder ")
-                //     .map(|res| res.map(|e| e.path()))
-                //     .collect::<Result<Vec<_>, io::Error>>()
-                //     .expect("error collecting vids");
-                // videos.sort();
-                // func
-                //
-
                 let mut bubbilites: Vec<PathBuf> = Vec::new();
 
                 match read_dir(self.subtitle_folder.clone()) {
@@ -266,28 +256,11 @@ impl App {
                         println!(" no subtitles folder boss{e}");
                     }
                 }
-                // let mut subtitles = read_dir(self.subtitle_folder.clone())
-                //     .expect("error reading subtitles fodler")
-                //     .map(|e| e.map(|r| r.path()))
-                //     .collect::<Result<Vec<_>, io::Error>>()
-                //     .expect("Error collect subtitles");
-                // subtitles.sort();
-
-                // let herebro: Vec<(usize, std::path::PathBuf)> =
-                //     videos.clone().into_iter().enumerate().collect();
 
                 let heresub: Vec<(usize, std::path::PathBuf)> =
                     bubbilites.into_iter().enumerate().collect();
-                // println!("your folder better print {:?}", herebro);
-                // let heredude: Vec<PathBuf> = videos.clone().into_iter().collect();
-                // println!("HEREDUDE {:?}\n", heredude);
 
-                //self.sorted_folders.video = heredude.clone();
                 self.sorted_folders.subs = heresub.clone();
-                // i should change this func i should make it so that it grabs the index the index
-                // the video is at
-                //
-
                 let herebro = self.sorted_folders.video.clone();
 
                 if let Some((i, vid)) = herebro.get(self.video_folder_better.position) {
