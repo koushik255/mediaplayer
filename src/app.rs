@@ -102,8 +102,12 @@ impl Default for App {
         println!("CHECKING IF DEFSUB FUCK UP AS STR {}", def_sub);
         // you would need to change this to the dir
         let default_vid = "/home/koushikk/Documents/Rust2/iced-video-crate/src/defvid.mp4";
-        let default_sub = "/home/koushikk/Documents/Rust2/iced-video-crate/src/defsub.ass";
+        let default_sub = "/home/koushikk/Documents/Rust2/iced-video-crate/src/simple.srt";
 
+        // let mut video = Video::new(&url::Url::from_file_path(default_vid).unwrap())
+        //     .unwrap()
+        //     .set_subtitle_url(&url::Url::from_file_path(default_sub).unwrap())
+        //     .unwrap();
         let mut video = Video::new(&url::Url::from_file_path(default_vid).unwrap()).unwrap();
 
         let subtitle_file = PathBuf::from(default_sub);
@@ -115,9 +119,13 @@ impl Default for App {
         let def_pos = 0.0;
         println!("{}", def_pos.clone());
 
+        // video
+        //     .seek(Duration::from_secs_f64(def_pos), false)
+        //     .expect("seek");
+
         video
-            .seek(Duration::from_secs_f64(def_pos), false)
-            .expect("seek");
+            .set_subtitle_url(&url::Url::from_file_path(default_sub).unwrap())
+            .unwrap();
 
         let def_vid_folder = VideoFolder {
             folder: "None".to_string(),
