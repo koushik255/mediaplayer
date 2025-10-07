@@ -101,13 +101,10 @@ impl Default for App {
         let def_sub = lastdbdb.subfile.as_str();
         println!("CHECKING IF DEFSUB FUCK UP AS STR {}", def_sub);
         // you would need to change this to the dir
-        let default_vid = "/home/koushikk/Documents/Rust2/iced-video-crate/src/defvid.mp4";
-        let default_sub = "/home/koushikk/Documents/Rust2/iced-video-crate/src/simple.srt";
+        // let default_vid = "/home/koushikk/Documents/Rust2/iced-video-crate/src/defvid.mp4";
+        let default_vid = "/home/koushikk/Downloads/foden.mkv";
+        let default_sub = "/home/koushikk/Documents/Rust2/iced-video-crate/src/defsub.ass";
 
-        // let mut video = Video::new(&url::Url::from_file_path(default_vid).unwrap())
-        //     .unwrap()
-        //     .set_subtitle_url(&url::Url::from_file_path(default_sub).unwrap())
-        //     .unwrap();
         let mut video = Video::new(&url::Url::from_file_path(default_vid).unwrap()).unwrap();
 
         let subtitle_file = PathBuf::from(default_sub);
@@ -118,10 +115,6 @@ impl Default for App {
 
         let def_pos = 0.0;
         println!("{}", def_pos.clone());
-
-        // video
-        //     .seek(Duration::from_secs_f64(def_pos), false)
-        //     .expect("seek");
 
         video
             .set_subtitle_url(&url::Url::from_file_path(default_sub).unwrap())
@@ -350,6 +343,8 @@ impl App {
                 }
 
                 self.active_subtitle = sub_text.clone();
+                // yeah if the subtitle is binded to the file then im fucked right?
+                // but if your subtitle file then i should be able to sync it
 
                 match sub_text {
                     Some(text) => {
@@ -389,7 +384,7 @@ impl App {
             Message::NewFrame => {
                 if !self.dragging {
                     self.position = self.video.position().as_secs_f64();
-                    //self.update_active_subtitle();
+                    self.update_active_subtitle();
                 }
                 //println!("{}, {:?}", self.position.clone(), self.video_url.clone());
                 Task::none()
@@ -598,8 +593,8 @@ impl App {
         }) {
             self.active_subtitle = Some(entry.text.clone());
 
-            //let herebro = entry.text.clone();
-            //println!("{:?}, TIME: {:?}", herebro.clone(), SystemTime::now());
+            let herebro = entry.text.clone();
+            println!("{:?}, TIME: {:?}", herebro.clone(), SystemTime::now());
         } else {
             self.active_subtitle = None;
         }
