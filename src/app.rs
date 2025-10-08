@@ -493,6 +493,9 @@ impl App {
             }
 
             Message::OpenSubtitle => Task::perform(
+                // if i just made it so that if you open subtitles it would auto do that but thats
+                // also leaving myself error prone
+                // i really need to make the ui bettter because its fucking cooked rn
                 async {
                     let handle = rfd::AsyncFileDialog::new()
                         .set_title("Choose a subtitle file")

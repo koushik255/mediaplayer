@@ -56,8 +56,9 @@ impl App {
                 )
                 .align_x(iced::Alignment::Start)
                 .align_y(iced::Alignment::Center)
-                .width(iced::Length::Fixed(1280.0))
-                .height(iced::Length::Fixed(720.0)), //.padding(Padding::new(0.0).left(150.0).top(100.0)),
+                .width(iced::Length::Fixed(1600.0))
+                .height(iced::Length::Fixed(800.0))
+                .padding(Padding::new(00.0).left(20.0).top(70.0)),
             )
             .push(
                 Container::new(Text::new(heresubdudebud).size(50))
@@ -93,30 +94,25 @@ impl App {
             .push(
                 Container::new(
                     Row::new()
-                        .spacing(10)
+                        .spacing(5)
                         .push(
-                            Button::new(Text::new(if self.muted { "🔇" } else { "🔊" }))
-                                .width(40.0)
+                            Button::new(Text::new(if self.muted { "Mute" } else { "Unmute" }))
                                 .on_press(Message::ToggleMute),
                         )
-                        .push(
-                            Button::new(Text::new("QUIT"))
-                                .width(40.0)
-                                .on_press(Message::Quit),
-                        )
+                        .push(Button::new(Text::new("quit")).on_press(Message::Quit))
                         .push(
                             Column::new()
                                 .push(
-                                    Container::new(Text::new(subtitles_file).size(20))
+                                    Container::new(Text::new(subtitles_file).size(13))
                                         .align_x(iced::Alignment::Center)
                                         .align_y(iced::Alignment::Center)
-                                        .padding(iced::Padding::new(10.0).left(20.0).right(100.0)),
+                                        .padding(iced::Padding::new(0.0).left(20.0).right(100.0)),
                                 )
                                 .push(
-                                    Container::new(Text::new(filename_text).size(20))
+                                    Container::new(Text::new(filename_text).size(13))
                                         .align_x(iced::Alignment::Center)
                                         .align_y(iced::Alignment::Center)
-                                        .padding(iced::Padding::new(10.0).left(20.0).right(100.0)),
+                                        .padding(iced::Padding::new(0.0).left(20.0).right(100.0)),
                                 ),
                         )
                         .push(Text::new("Volume:"))
