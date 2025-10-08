@@ -155,6 +155,7 @@ impl App {
                         .width(120.0)
                         .on_press(Message::ToggleLoop),
                     )
+                    .push(button("OWNSUBS").on_press(Message::UsingOwnSubs))
                     .push(button("Open").on_press(Message::Open))
                     .push(button("OPEN VID FOLDER").on_press(Message::OpenVidFolder))
                     .push(button("OPEN SUB FOLDER").on_press(Message::OpenSubFolder))

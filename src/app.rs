@@ -43,6 +43,7 @@ pub enum Message {
     AddAtSelection,
     ManualSelection,
     OverlayPressed,
+    UsingOwnSubs,
 }
 
 pub struct App {
@@ -71,6 +72,7 @@ pub struct App {
     pub selected_lang: String,
     pub selected_index: usize,
     pub manual_select: Option<usize>,
+    pub is_built_in_subs: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -155,6 +157,7 @@ impl Default for App {
             selected_lang: "".to_string(),
             selected_index: 0,
             manual_select: None,
+            is_built_in_subs: true,
         }
     }
 }
@@ -339,7 +342,7 @@ impl App {
                     self.prev_sub = self.active_subtitle.clone();
                     self.active_subtitle = sub_text.clone();
                 } else {
-                    // self.prev_sub= self.prev_sub;
+                    //self.prev_sub = self.prev_sub;
                 }
 
                 self.active_subtitle = sub_text.clone();
@@ -384,8 +387,14 @@ impl App {
             Message::NewFrame => {
                 if !self.dragging {
                     self.position = self.video.position().as_secs_f64();
+                    //self.update_active_subtitle();
+                    // here decide the bool
+                }
+                if !self.is_built_in_subs {
                     self.update_active_subtitle();
                 }
+                // yeah i need to make it so that subtitles and subttiles with mkv is different
+                // accpet type
                 //println!("{}, {:?}", self.position.clone(), self.video_url.clone());
                 Task::none()
             }
@@ -581,12 +590,22 @@ impl App {
                 println!("current subtitle file {:?}", self.subtitle_file.clone());
                 Task::none()
             }
+            Message::UsingOwnSubs => {
+                self.is_built_in_subs = false;
+
+                Task::none()
+            }
         }
     }
     fn update_active_subtitle(&mut self) {
         let mut t = Duration::from_secs_f64(self.position);
         t += Duration::from_secs_f64(self.parsed.unwrap());
-        //println!("updated t {:?} + {:?} ", t, self.parsed.unwrap());
+        println!("updated t {:?} + {:?} ", t, self.parsed.unwrap());
+        // i need to have 2 different types of subtitles, one for the mkv video and another for the
+        // default type, if the video is the default type then
+        // ok this is easy, make a boolean if the file is .mkv then it has subtitles built in so
+        // dont refresh the subtitles on everythign, otherwise if we are using our own subtitles
+        // then we need to
 
         if let Some(entry) = self.subtitles.iter().find(|s| {
             s.start + Duration::from_millis(000) <= t && t <= s.end + Duration::from_millis(0000)
