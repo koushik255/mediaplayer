@@ -613,8 +613,18 @@ impl App {
             Message::OpenedSubFolder(folder) => {
                 println!("subtitle folder location {:?}", folder);
 
-                let folder = folder.unwrap().to_string_lossy().into_owned();
-                self.subtitle_folder = folder;
+                let folder = match folder {
+                    Ok(folder) => {
+                        let fol2 = folder.to_string_lossy().into_owned();
+                        self.subtitle_folder = fol2;
+                    }
+                    Err(e) => {
+                        println!("no subtitles folder selected blud{}", e);
+                    }
+                };
+                // let folder = folder.unwrap().to_string_lossy().into_owned();
+                // self.subtitle_folder = folder;
+                println!("folder {:?}", folder);
                 println!("current subtitle file {:?}", self.subtitle_file.clone());
                 Task::none()
             }

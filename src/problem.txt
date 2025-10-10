@@ -7,3 +7,10 @@ its because im setting th ecode smewhere its some bullshit but basically what i 
 if i make a closure so that the self.video_url is not updateing everytime this is called
 wait i should just make it so that this next video_ does not do anything if a loaded_folder bool hasned been passed
 ok thats fixed
+
+now i need to fix how the panic work, if you click open file, or any of the opens and it doesnt return a file it panics,
+it should be an easy fix since i just need to match the unwrap instead of expect
+
+Ok i fixed it for the subtitles folder i just need to do the same thing for everything else,
+also i can feel the preformance of the whole thing start fuckign up sometimes, it has to be because of the amount of clones made because its not like the video
+is being refreshed over and over again, 
