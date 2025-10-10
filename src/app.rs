@@ -73,6 +73,7 @@ pub struct App {
     pub selected_index: usize,
     pub manual_select: Option<usize>,
     pub is_built_in_subs: bool,
+    pub file_is_loaded: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -81,6 +82,11 @@ pub struct SubtitleEntry {
     end: Duration,
     text: String,
 }
+
+// todos
+// i really need to clean this code up because its so un enjoybale to work on TBH also the ui
+// should probably be re done but first i need to handle like all the pnaics and make it not so
+// many buttons
 
 impl Default for App {
     fn default() -> Self {
@@ -158,6 +164,7 @@ impl Default for App {
             selected_index: 0,
             manual_select: None,
             is_built_in_subs: true,
+            file_is_loaded: false,
         }
     }
 }
@@ -299,6 +306,23 @@ impl App {
                 println!("Path string after as str {}", url_her);
                 let url = Url::from_file_path(self.video_folder_better.current_video.clone())
                     .expect("error URL");
+
+                //
+                // let url = match Url::from_file_path(self.video_folder_better.current_video.clone())
+                // {
+                //     Ok(url) => url,
+                //     Err(e) => {
+                //         println!("error blud {:?}", e);
+                //         println!(
+                //             "self video_url before putting into to URL {:?}",
+                //             &self.video_url
+                //         );
+                //
+                //         let url55 =
+                //             Url::from_file_path(&self.video_url).expect("error in errl url");
+                //         url55
+                //     }
+                // };
 
                 let new_video = Video::new(&url).expect("Error creating new video in pause");
                 self.video_url = self
@@ -549,6 +573,7 @@ impl App {
             ),
             Message::OpenedFolder(folder) => {
                 println!("folder location {:?}", folder);
+                self.file_is_loaded = true;
                 let folder = folder.unwrap().to_string_lossy().into_owned();
 
                 // func

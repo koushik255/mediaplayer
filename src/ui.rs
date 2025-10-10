@@ -14,12 +14,19 @@ use crate::app::{App, Message};
 impl App {
     pub fn view(&self) -> Element<Message> {
         let subtitle_text = self.active_subtitle.as_deref().unwrap_or("");
-        let filename_text = self
-            .video_url
-            .file_name()
-            .unwrap()
-            .to_string_lossy()
-            .into_owned();
+
+        //  BRO THIS CODE IS FUCKKED MAN WOW HOW MY DECESIONS COME BACK TO HAUNT ME
+        let filename_text = match self.video_url.file_name() {
+            Some(name) => name.to_string_lossy().into_owned(),
+            None => {
+                eprintln!(
+                    "Error: no filename found in the path {}",
+                    self.video_url.display()
+                );
+                String::from("unknown_filename")
+            }
+        };
+
         let subtitles_file = self
             .subtitle_file
             .file_name()
@@ -156,7 +163,7 @@ impl App {
                     .push(button("OPEN VID FOLDER").on_press(Message::OpenVidFolder))
                     .push(button("OPEN SUB FOLDER").on_press(Message::OpenSubFolder))
                     .push(button("Open Subtitles").on_press(Message::OpenSubtitle))
-                    .push(button("next video").on_press(Message::Next))
+                    .push(self.next_button())
                     .push(button("last vid").on_press(Message::OpenLast))
                     .push(button("press to add at selection").on_press(Message::AddAtSelection))
                     .push(
@@ -205,6 +212,20 @@ impl App {
             .center_x(Length::Fill)
             .center_y(Length::Fill)
             .into()
+    }
+
+    pub fn next_button(&self) -> Element<Message> {
+        let mut next_button = Button::new(Text::new(if self.file_is_loaded {
+            "Next video"
+        } else {
+            "No next video"
+        }));
+
+        if self.file_is_loaded {
+            next_button = next_button.on_press(Message::Next);
+        }
+
+        next_button.into()
     }
 }
 

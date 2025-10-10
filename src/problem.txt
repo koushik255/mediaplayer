@@ -1,0 +1,9 @@
+
+ok so basically the next video thing is not working properly because if you have no video folder in your que it will just crash
+what i tried to do what to make it so that it would set the current video its playing as its default but thats not workigng either,
+the best thing to probably to is to fix it, i also think its because in the next function im doing somehting
+
+its because im setting th ecode smewhere its some bullshit but basically what i can do is 
+if i make a closure so that the self.video_url is not updateing everytime this is called
+wait i should just make it so that this next video_ does not do anything if a loaded_folder bool hasned been passed
+ok thats fixed
