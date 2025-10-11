@@ -16,3 +16,6 @@ also i can feel the preformance of the whole thing start fuckign up sometimes, i
 is being refreshed over and over again, 
 
 ok basically all the panics are done expect for the video folder, which i will do now
+
+Should i "clean" the code up using functions?
+its not like i need to load thing up from different places, anyways since its not panicing on errors its fine now 

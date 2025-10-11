@@ -600,14 +600,33 @@ impl App {
             Message::OpenedFolder(folder) => {
                 println!("folder location {:?}", folder);
                 self.file_is_loaded = true;
-                let folder = folder.unwrap().to_string_lossy().into_owned();
+                // let folder = folder.unwrap().to_string_lossy().into_owned();
 
-                // func
-                let mut videos = read_dir(folder.clone())
-                    .expect("error reading video folder ")
-                    .map(|res| res.map(|e| e.path()))
-                    .collect::<Result<Vec<_>, io::Error>>()
-                    .expect("error collecting vids");
+                let bomba = match folder.clone() {
+                    Ok(path) => path,
+                    Err(e) => {
+                        eprintln!("no folder chosen {}", e);
+                        std::path::PathBuf::new()
+                    }
+                };
+
+                // yah ok i like this way for error handling, acuallty i reallt dont tbh
+                // this is gpt but idk i dont hate it, it just seems over complicated to put into a
+                // closure, same thing as making a function for it
+                //
+                let mut videos = read_dir(bomba.clone())
+                    .map_err(|e| eprintln!("Error reading video folder: {}", e))
+                    .ok()
+                    .map(|entries| {
+                        entries
+                            .map(|res| res.map(|e| e.path()))
+                            .collect::<Result<Vec<_>, io::Error>>()
+                            .map_err(|e| eprintln!("Error collecting paths: {}", e))
+                            .ok()
+                            .unwrap_or_default()
+                    })
+                    .unwrap_or_default();
+
                 videos.sort();
                 // if i set this to a sels variables i can just use this in next
                 let herebro: Vec<(usize, std::path::PathBuf)> =
@@ -618,7 +637,7 @@ impl App {
                     self.vec.push(vid.to_string_lossy().into_owned());
                 }
 
-                self.video_folder_better.folder = folder.clone();
+                self.video_folder_better.folder = bomba.clone().to_string_lossy().into_owned();
 
                 Task::none()
             }
