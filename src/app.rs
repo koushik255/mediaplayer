@@ -549,7 +549,20 @@ impl App {
             ),
             Message::OpenedSubtitles(file) => {
                 println!("url before  opedn sub() {:?}", file);
-                self.subtitle_file = file.clone().unwrap();
+                // let subfile = file.clone().unwrap_or_else(|e| {
+                //     eprintln!("no file chosen {}", e);
+                //     "ntoihgnl".to_string()
+                // });
+                //
+                let subfile = match file.clone() {
+                    Ok(f) => f.to_string_lossy().into_owned(),
+                    Err(e) => {
+                        println!("dadwad {}", e);
+                        "ntohing".to_string()
+                    }
+                };
+                self.subtitle_file = PathBuf::from(subfile);
+
                 match file {
                     Ok(path) => {
                         let path_str = path.to_string_lossy();
