@@ -6,6 +6,7 @@ use rusqlite::Result;
 use rusqlite::params;
 use std::clone;
 use std::io;
+use std::path;
 use std::time::{Duration, SystemTime};
 
 use url::Url;
@@ -251,23 +252,25 @@ impl App {
                 Task::none()
             }
             Message::Next => {
-                let mut bubbilites: Vec<PathBuf> = Vec::new();
-
-                match read_dir(self.subtitle_folder.clone()) {
-                    Ok(e) => {
-                        bubbilites = e
-                            .map(|e| e.map(|r| r.path()))
-                            .collect::<Result<Vec<_>, io::Error>>()
-                            .expect("error ");
-                        bubbilites.sort();
-                        for bub in &bubbilites {
-                            println!("{}", bub.display());
-                        }
-                    }
-                    Err(e) => {
-                        println!(" no subtitles folder boss{e}");
-                    }
-                }
+                // let mut bubbilites: Vec<PathBuf> = Vec::new();
+                //
+                // match read_dir(self.subtitle_folder.clone()) {
+                //     Ok(e) => {
+                //         bubbilites = e
+                //             .map(|e| e.map(|r| r.path()))
+                //             .collect::<Result<Vec<_>, io::Error>>()
+                //             .expect("error ");
+                //         bubbilites.sort();
+                //         for bub in &bubbilites {
+                //             println!("{}", bub.display());
+                //         }
+                //     }
+                //     Err(e) => {
+                //         println!(" no subtitles folder boss{e}");
+                //     }
+                // }
+                let path = PathBuf::from(self.subtitle_folder.clone());
+                let bubbilites = read_videos_safely(path.as_path());
 
                 let heresub: Vec<(usize, std::path::PathBuf)> =
                     bubbilites.into_iter().enumerate().collect();
@@ -308,23 +311,6 @@ impl App {
                 let url = Url::from_file_path(self.video_folder_better.current_video.clone())
                     .expect("error URL");
 
-                //
-                // let url = match Url::from_file_path(self.video_folder_better.current_video.clone())
-                // {
-                //     Ok(url) => url,
-                //     Err(e) => {
-                //         println!("error blud {:?}", e);
-                //         println!(
-                //             "self video_url before putting into to URL {:?}",
-                //             &self.video_url
-                //         );
-                //
-                //         let url55 =
-                //             Url::from_file_path(&self.video_url).expect("error in errl url");
-                //         url55
-                //     }
-                // };
-
                 let new_video = Video::new(&url).expect("Error creating new video in pause");
                 self.video_url = self
                     .video_folder_better
@@ -350,39 +336,30 @@ impl App {
                 Task::none()
             }
             Message::NewSub(sub_text) => {
-                // match sub_text {
-                //     Some(text) => {
-                //         println!("SUBTITLE {}", text);
-                //
-                //         self.active_subtitle = text;
-                //     }
-                //     None => {
-                //         println!("no substitle");
-                //     }
-                // }
-                //
-                // so what if i cloned the sub in the ui place then printted that and then once a
-                // new one would come it would just print the new once
-                if self.prev_sub != sub_text {
-                    self.prev_sub = self.active_subtitle.clone();
-                    self.active_subtitle = sub_text.clone();
+                // This message should only send IF we are not using our own subs
+                // so if own subs = true do nothing,
+
+                if self.is_built_in_subs {
+                    // do nothing
                 } else {
-                    //self.prev_sub = self.prev_sub;
-                }
-
-                self.active_subtitle = sub_text.clone();
-                // yeah if the subtitle is binded to the file then im fucked right?
-                // but if your subtitle file then i should be able to sync it
-
-                match sub_text {
-                    Some(text) => {
-                        println!("sub {}", text);
+                    if self.prev_sub != sub_text {
+                        self.prev_sub = self.active_subtitle.clone();
+                        self.active_subtitle = sub_text.clone();
+                    } else {
+                        //self.prev_sub = self.prev_sub;
                     }
-                    None => {
-                        //println!("no subs blud");
+
+                    self.active_subtitle = sub_text.clone();
+
+                    match sub_text {
+                        Some(text) => {
+                            println!("sub {}", text);
+                        }
+                        None => {
+                            //println!("no subs blud");
+                        }
                     }
                 }
-                // so i need to make it so it stays on the screen until the next message comes in
 
                 Task::none()
             }
@@ -614,19 +591,26 @@ impl App {
                 // this is gpt but idk i dont hate it, it just seems over complicated to put into a
                 // closure, same thing as making a function for it
                 //
-                let mut videos = read_dir(bomba.clone())
-                    .map_err(|e| eprintln!("Error reading video folder: {}", e))
-                    .ok()
-                    .map(|entries| {
-                        self.file_is_loaded = true;
-                        entries
-                            .map(|res| res.map(|e| e.path()))
-                            .collect::<Result<Vec<_>, io::Error>>()
-                            .map_err(|e| eprintln!("Error collecting paths: {}", e))
-                            .ok()
-                            .unwrap_or_default()
-                    })
-                    .unwrap_or_default();
+                // let mut videos = read_dir(bomba.clone())
+                //     .map_err(|e| eprintln!("Error reading video folder: {}", e))
+                //     .ok()
+                //     .map(|entries| {
+                //         self.file_is_loaded = true;
+                //         entries
+                //             .map(|res| res.map(|e| e.path()))
+                //             .collect::<Result<Vec<_>, io::Error>>()
+                //             .map_err(|e| eprintln!("Error collecting paths: {}", e))
+                //             .ok()
+                //             .unwrap_or_default()
+                //     })
+                //     .unwrap_or_default();
+
+                let mut videos = read_videos_safely(&bomba);
+                if videos.is_empty() {
+                    self.file_is_loaded = false;
+                } else {
+                    self.file_is_loaded = true;
+                }
 
                 videos.sort();
 
@@ -686,7 +670,12 @@ impl App {
     fn update_active_subtitle(&mut self) {
         let mut t = Duration::from_secs_f64(self.position);
         t += Duration::from_secs_f64(self.parsed.unwrap());
-        println!("updated t {:?} + {:?} ", t, self.parsed.unwrap());
+        println!(
+            "updated t {:?} + {:?} using own subes {}",
+            t,
+            self.parsed.unwrap(),
+            self.is_built_in_subs
+        );
         // i need to have 2 different types of subtitles, one for the mkv video and another for the
         // default type, if the video is the default type then
         // ok this is easy, make a boolean if the file is .mkv then it has subtitles built in so
@@ -889,6 +878,28 @@ fn db_get_last() -> Result<Dbchoose, String> {
             Err("Could not find last".to_string())
         }
         Err(e) => Err(format!("Database error {}", e)),
+    }
+}
+
+fn read_videos_safely(path: &Path) -> Vec<PathBuf> {
+    let entries = match read_dir(path) {
+        Ok(entries) => entries,
+        Err(e) => {
+            eprintln!("Error reading directory {:?}: {}", path, e);
+            return Vec::new();
+        }
+    };
+    let paths: Result<Vec<_>, _> = entries.map(|res| res.map(|e| e.path())).collect();
+
+    match paths {
+        Ok(mut vids) => {
+            vids.sort();
+            vids
+        }
+        Err(e) => {
+            eprintln!("Error collecting paths: {}", e);
+            Vec::new()
+        }
     }
 }
 

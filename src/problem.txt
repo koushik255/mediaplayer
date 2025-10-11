@@ -20,3 +20,7 @@ ok basically all the panics are done expect for the video folder, which i will d
 Should i "clean" the code up using functions?
 its not like i need to load thing up from different places, anyways since its not panicing on errors its fine now 
 
+ok the best way to handle the errors is via functions, this is kinda funny figureing something like this way later
+but with the functions i can make sure that i never have to .unwrap() within a message so i can almost always handle it gracefully
+
+ok opening a video folder makes it very laggy, lets check on realease, it works fine on realase so wtf
