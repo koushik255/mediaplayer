@@ -599,7 +599,7 @@ impl App {
             ),
             Message::OpenedFolder(folder) => {
                 println!("folder location {:?}", folder);
-                self.file_is_loaded = true;
+                // self.file_is_loaded = true;
                 // let folder = folder.unwrap().to_string_lossy().into_owned();
 
                 let bomba = match folder.clone() {
@@ -618,6 +618,7 @@ impl App {
                     .map_err(|e| eprintln!("Error reading video folder: {}", e))
                     .ok()
                     .map(|entries| {
+                        self.file_is_loaded = true;
                         entries
                             .map(|res| res.map(|e| e.path()))
                             .collect::<Result<Vec<_>, io::Error>>()
@@ -628,6 +629,7 @@ impl App {
                     .unwrap_or_default();
 
                 videos.sort();
+
                 // if i set this to a sels variables i can just use this in next
                 let herebro: Vec<(usize, std::path::PathBuf)> =
                     videos.clone().into_iter().enumerate().collect();
