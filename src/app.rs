@@ -4,6 +4,7 @@ use rusqlite::Connection;
 use rusqlite::Error;
 use rusqlite::Result;
 use rusqlite::params;
+use std::clone;
 use std::io;
 use std::time::{Duration, SystemTime};
 
@@ -482,20 +483,32 @@ impl App {
                         .set_title("Choose a video file")
                         .add_filter("Video files", &["mp4", "avi", "mkv", "mov", "wmv"])
                         .pick_file()
-                        .await
-                        .ok_or_else(|| "No file chosen".to_string())?;
+                        .await;
 
-                    url::Url::from_file_path(handle.path())
-                        .map_err(|_| "Invalid file path".to_string())
+                    match handle {
+                        Some(folder_handle) => match url::Url::from_file_path(folder_handle.path())
+                        {
+                            Ok(url) => Ok(url),
+                            Err(_) => Err("Invalid file path".to_string()),
+                        },
+                        None => Err("No file chosen".to_string()),
+                    }
                 },
                 Message::Opened,
             ),
             Message::Opened(result) => {
-                self.video_url = result.clone().unwrap().to_file_path().unwrap();
-                println!("updated video_url");
+                let svy = match result.clone() {
+                    Ok(url) => url.to_file_path().unwrap().to_string_lossy().into_owned(),
+                    Err(e) => {
+                        println!("error string svy {}", e);
+                        "ntohing".to_string()
+                    }
+                };
+
+                self.video_url = PathBuf::from(svy);
 
                 match result {
-                    Ok(url) => match Video::new(&url) {
+                    Ok(url) => match Video::new(&url.clone()) {
                         Ok(new_video) => {
                             self.video = new_video;
                             self.position = 0.0;
@@ -622,6 +635,7 @@ impl App {
                         println!("no subtitles folder selected blud{}", e);
                     }
                 };
+                // so what i did here what i handlpesd the error on the unwraps
                 // let folder = folder.unwrap().to_string_lossy().into_owned();
                 // self.subtitle_folder = folder;
                 println!("folder {:?}", folder);
