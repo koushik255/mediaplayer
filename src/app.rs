@@ -249,26 +249,11 @@ impl App {
                     println!("videos sorted {:?}", video);
                 }
 
+                println!("{}", self.video.framerate());
+
                 Task::none()
             }
             Message::Next => {
-                // let mut bubbilites: Vec<PathBuf> = Vec::new();
-                //
-                // match read_dir(self.subtitle_folder.clone()) {
-                //     Ok(e) => {
-                //         bubbilites = e
-                //             .map(|e| e.map(|r| r.path()))
-                //             .collect::<Result<Vec<_>, io::Error>>()
-                //             .expect("error ");
-                //         bubbilites.sort();
-                //         for bub in &bubbilites {
-                //             println!("{}", bub.display());
-                //         }
-                //     }
-                //     Err(e) => {
-                //         println!(" no subtitles folder boss{e}");
-                //     }
-                // }
                 let path = PathBuf::from(self.subtitle_folder.clone());
                 let bubbilites = read_videos_safely(path.as_path());
 
@@ -295,7 +280,7 @@ impl App {
                         .expect("error parse");
                 println!("updated subtitle file");
 
-                self.update_active_subtitle();
+                //self.update_active_subtitle();
                 // 1.75
 
                 let path_str = self
@@ -338,9 +323,11 @@ impl App {
             Message::NewSub(sub_text) => {
                 // This message should only send IF we are not using our own subs
                 // so if own subs = true do nothing,
+                println!("subs from new sub {:?}", sub_text.clone());
+                self.active_subtitle = sub_text.clone();
 
                 if self.is_built_in_subs {
-                    // do nothing
+                    println!("using built in subs");
                 } else {
                     if self.prev_sub != sub_text {
                         self.prev_sub = self.active_subtitle.clone();
@@ -393,6 +380,7 @@ impl App {
                     // here decide the bool
                 }
                 if !self.is_built_in_subs {
+                    println!("{}", self.is_built_in_subs);
                     self.update_active_subtitle();
                 }
                 // yeah i need to make it so that subtitles and subttiles with mkv is different
@@ -661,7 +649,11 @@ impl App {
                 Task::none()
             }
             Message::UsingOwnSubs => {
-                self.is_built_in_subs = false;
+                if self.is_built_in_subs {
+                    self.is_built_in_subs = false;
+                } else {
+                    self.is_built_in_subs = true;
+                }
 
                 Task::none()
             }
@@ -670,12 +662,7 @@ impl App {
     fn update_active_subtitle(&mut self) {
         let mut t = Duration::from_secs_f64(self.position);
         t += Duration::from_secs_f64(self.parsed.unwrap());
-        println!(
-            "updated t {:?} + {:?} using own subes {}",
-            t,
-            self.parsed.unwrap(),
-            self.is_built_in_subs
-        );
+        println!("updated t {:?} + {:?}", t, self.parsed.unwrap(),);
         // i need to have 2 different types of subtitles, one for the mkv video and another for the
         // default type, if the video is the default type then
         // ok this is easy, make a boolean if the file is .mkv then it has subtitles built in so

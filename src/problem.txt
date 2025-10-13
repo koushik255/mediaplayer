@@ -24,3 +24,8 @@ ok the best way to handle the errors is via functions, this is kinda funny figur
 but with the functions i can make sure that i never have to .unwrap() within a message so i can almost always handle it gracefully
 
 ok opening a video folder makes it very laggy, lets check on realease, it works fine on realase so wtf
+
+ok i shold look into whats causeing that and then i can look towards adding like picture thumbnails of the scroll bar
+i can also make it conditionally render and i should probably move it aswell just because it kinda gets in the way of the subtitles maybe i could move it like up? 
+hopefully it would let me do that without considering it in the space of the video player, also i should try to see if i can make it so the vidoe player is async
+because i could just run that in a possition in a different view functoin or whatever like since it would be the only element everything else would just be working around that 
