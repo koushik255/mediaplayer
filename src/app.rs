@@ -335,6 +335,8 @@ impl App {
                     } else {
                         //self.prev_sub = self.prev_sub;
                     }
+                    // none of the code after this is being usied in this message idk why maybe
+                    // because wait its yeah i have no clue dude
 
                     self.active_subtitle = sub_text.clone();
 

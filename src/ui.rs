@@ -1,8 +1,7 @@
 use iced::Alignment;
 use iced::Font;
 use iced::Length;
-use iced::Renderer;
-use iced::Theme;
+
 use iced::widget::{Button, Column, Container, Row, Slider, Text, button, text_input};
 use iced::{Element, Padding};
 
@@ -50,10 +49,8 @@ impl App {
             }
         }
 
-        let overlay_btn: iced::widget::Button<'_, _, Theme, Renderer> =
-            button("Click me!").on_press(Message::OverlayPressed);
-
         Column::new()
+            //.push(self.list())
             .push(
                 Container::new(
                     VideoPlayer::new(&self.video)
@@ -65,15 +62,19 @@ impl App {
                 .align_y(iced::Alignment::Center)
                 .width(iced::Length::Fixed(1600.0))
                 .height(iced::Length::Fixed(800.0))
-                .padding(Padding::new(00.0).left(20.0).top(70.0)),
+                .padding(Padding::new(00.0).left(20.0).top(60.0)),
             )
+            .push(self.list())
+            //.push(video_row)
             .push(
                 Container::new(Text::new(heresubdudebud).size(50))
                     .align_x(iced::Alignment::Center)
                     .align_y(iced::Alignment::Center)
+                    .width(iced::Fill)
+                    .height(iced::Fill)
                     .padding(iced::Padding::new(0.0).left(150.0)),
             )
-            .push(self.list())
+            // .push(self.list())
             .push(
                 Container::new(
                     text_input("Enter a number...", &self.value)
@@ -185,22 +186,20 @@ impl App {
         let selection_list = SelectionList::new_with(
             &self.vec[..],
             Message::LanguageSelected,
-            12.0,
-            5.0,
+            9.0,
+            6.0,
             primary,
             self.manual_select,
             Font::default(),
         )
         .width(Length::Shrink)
-        .height(Length::Shrink);
+        .height(Length::Fill);
 
         let content = Column::new()
             .width(Length::Fill)
-            .height(Length::Fill)
             .align_x(Alignment::End)
             .spacing(10)
             .push(selection_list)
-            .push(Text::new("Which is your favorite language?"))
             .push(Text::new(format!("{:?}", self.selected_lang)))
             .push(button("Manual select Index 2").on_press(Message::ManualSelection));
 
@@ -209,8 +208,9 @@ impl App {
         Container::new(content)
             .width(Length::Fill)
             .height(Length::Fill)
-            .center_x(Length::Fill)
-            .center_y(Length::Fill)
+            .align_x(Alignment::End)
+            .align_y(Alignment::Start)
+            .padding(20)
             .into()
     }
 
