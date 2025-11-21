@@ -5,6 +5,8 @@ use iced::Length;
 use iced::widget::{Button, Column, Container, Row, Slider, Text, button, text_input};
 use iced::{Element, Padding};
 
+use iced::widget::Stack;
+use iced_aw::style::colors::WHITE;
 use iced_aw::{selection_list::SelectionList, style::selection_list::primary};
 use iced_video_player::VideoPlayer;
 
@@ -12,9 +14,6 @@ use crate::app::{App, Message};
 
 impl App {
     pub fn view(&self) -> Element<Message> {
-        let subtitle_text = self.active_subtitle.as_deref().unwrap_or("");
-
-        //  BRO THIS CODE IS FUCKKED MAN WOW HOW MY DECESIONS COME BACK TO HAUNT ME
         let filename_text = match self.video_url.file_name() {
             Some(name) => name.to_string_lossy().into_owned(),
             None => {
@@ -29,59 +28,53 @@ impl App {
         let subtitles_file = self
             .subtitle_file
             .file_name()
-            .unwrap()
+            .unwrap_or_default()
             .to_string_lossy()
             .into_owned();
 
-        // so basically the subtitles are updateing every frame when we dont need that we only need
-        // them to update when their is a new subtitles, when the subtitles message is given
-        // ok on NewSub i need to update the actince text
         let mut heresubdudebud = String::new();
-        match self.active_subtitle.clone() {
-            Some(text) => {
-                //let sub_text = text;
-                heresubdudebud = text.replace("&apos;", "'").replace("&quot;", "\"");
-                // heresubdudebud = text.replace("&quot;", "\"");
-                println!("{heresubdudebud}");
-            }
-            None => {
-                //println!("no text yet bub");
-            }
+        if let Some(text) = &self.active_subtitle {
+            heresubdudebud = text.replace("&apos;", "'").replace("&quot;", "\"");
+            // println!("{heresubdudebud}");
         }
 
+        let video_layer = Container::new(
+            VideoPlayer::new(&self.video)
+                .on_end_of_stream(Message::EndOfStream)
+                .on_new_frame(Message::NewFrame)
+                .on_subtitle_text(Message::NewSub),
+        )
+        .width(iced::Length::Fixed(1700.0))
+        .height(iced::Length::Fixed(900.0));
+
+        let subtitle_layer = Container::new(
+            Text::new(heresubdudebud).size(35).color(WHITE), // the subtitle
+        )
+        .width(iced::Length::Fill)
+        .height(iced::Length::Fill)
+        .align_x(iced::Alignment::Center)
+        .align_y(iced::Alignment::End)
+        .padding(iced::Padding::new(0.0).bottom(50.0));
+
+        // video first then text
+        let overlay_stack = Stack::new().push(video_layer).push(subtitle_layer);
+
         Column::new()
-            //.push(self.list())
             .push(
-                Container::new(
-                    VideoPlayer::new(&self.video)
-                        .on_end_of_stream(Message::EndOfStream)
-                        .on_new_frame(Message::NewFrame)
-                        .on_subtitle_text(Message::NewSub),
-                )
-                .align_x(iced::Alignment::Start)
-                .align_y(iced::Alignment::Center)
-                .width(iced::Length::Fixed(1600.0))
-                .height(iced::Length::Fixed(800.0))
-                .padding(Padding::new(00.0).left(20.0).top(60.0)),
+                Container::new(overlay_stack)
+                    .align_x(iced::Alignment::Start)
+                    .align_y(iced::Alignment::Center)
+                    // Padding for the whole stack
+                    .padding(Padding::new(00.0).left(20.0).top(60.0)),
             )
             .push(self.list())
-            //.push(video_row)
-            .push(
-                Container::new(Text::new(heresubdudebud).size(50))
-                    .align_x(iced::Alignment::Center)
-                    .align_y(iced::Alignment::Center)
-                    .width(iced::Fill)
-                    .height(iced::Fill)
-                    .padding(iced::Padding::new(0.0).left(150.0)),
-            )
-            // .push(self.list())
             .push(
                 Container::new(
                     text_input("Enter a number...", &self.value)
                         .on_input(Message::ValueChanged)
                         .on_submit(Message::SubmitPressed)
                         .padding(5)
-                        .size(15), // font size
+                        .size(15),
                 )
                 .align_x(iced::Alignment::Center)
                 .align_y(iced::Alignment::Center)
@@ -202,8 +195,6 @@ impl App {
             .push(selection_list)
             .push(Text::new(format!("{:?}", self.selected_lang)))
             .push(button("Manual select Index 2").on_press(Message::ManualSelection));
-
-        //content = content.push(Space::with_height(Length::Fixed(400.0)));
 
         Container::new(content)
             .width(Length::Fill)
