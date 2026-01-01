@@ -1,0 +1,3 @@
+-be able to control the streams of the video (ffmpeg)
+- be able to control the subtitles / fix the renderer for customs (should just be able to extract the embedded subs tbh)
+have the videos on the side of the screen and have it be somewhat of a dropdown menu where you can select which episode you want to watch

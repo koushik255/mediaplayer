@@ -113,7 +113,7 @@ impl Default for App {
         // you would need to change this to the dir
         // let default_vid = "/home/koushikk/Documents/Rust2/iced-video-crate/src/defvid.mp4";
         let default_vid = "/home/koushikk/Downloads/foden.mkv";
-        let default_sub = "/home/koushikk/Documents/Rust2/iced-video-crate/src/defsub.ass";
+        let default_sub = "/home/koushikk/Documents/Rust2/iced-video-crate/src/simple.srt";
 
         let mut video = Video::new(&url::Url::from_file_path(default_vid).unwrap()).unwrap();
 
@@ -326,14 +326,15 @@ impl App {
                 println!("subs from new sub {:?}", sub_text.clone());
                 self.active_subtitle = sub_text.clone();
 
-                if self.is_built_in_subs {
+                if !self.is_built_in_subs {
                     println!("using built in subs");
                 } else {
                     if self.prev_sub != sub_text {
                         self.prev_sub = self.active_subtitle.clone();
                         self.active_subtitle = sub_text.clone();
+                        println!("in the else");
                     } else {
-                        //self.prev_sub = self.prev_sub;
+                        self.prev_sub = self.prev_sub.clone();
                     }
                     // none of the code after this is being usied in this message idk why maybe
                     // because wait its yeah i have no clue dude
@@ -345,7 +346,7 @@ impl App {
                             println!("sub {}", text);
                         }
                         None => {
-                            //println!("no subs blud");
+                            println!("no subs blud");
                         }
                     }
                 }
@@ -842,6 +843,7 @@ fn db_get_all() -> Result<Vec<Dbchoose>> {
         .expect("error collect");
     Ok(all)
 }
+// see now its for my design choice do i want to
 
 fn db_get_last() -> Result<Dbchoose, String> {
     let conn =

@@ -11,5 +11,7 @@ fn main() -> iced::Result {
     let _profiler = dhat::Profiler::new_heap();
 
     println!("runnig on new");
-    iced::application("Iced Video Player", App::update, App::view).run_with(App::new)
+    iced::application("Iced Video Player", App::update, App::view)
+        .window_size(iced::Size::new(1700.0, 1300.0))
+        .run_with(App::new)
 }
