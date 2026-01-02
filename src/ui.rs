@@ -2,7 +2,7 @@ use iced::Alignment;
 use iced::Font;
 use iced::Length;
 
-use iced::widget::{Button, Column, Container, Row, Slider, Text, button, text_input};
+use iced::widget::{button, text_input, Button, Column, Container, Row, Slider, Text};
 use iced::{Element, Padding};
 
 use iced::widget::Stack;
@@ -54,7 +54,7 @@ impl App {
         .height(iced::Length::Fill)
         .align_x(iced::Alignment::Center)
         .align_y(iced::Alignment::End)
-        .padding(iced::Padding::new(0.0).bottom(50.0));
+        .padding(iced::Padding::new(0.0).bottom(self.subtitle_offset as f32));
 
         // video first then text
         let overlay_stack = Stack::new().push(video_layer).push(subtitle_layer);
@@ -92,86 +92,106 @@ impl App {
                 )
                 .padding(iced::Padding::new(5.0).left(10.0).right(10.0)),
             )
-            .push(
-                Container::new(
-                    Row::new()
-                        .spacing(5)
-                        .push(
-                            Button::new(Text::new(if self.muted { "Mute" } else { "Unmute" }))
-                                .on_press(Message::ToggleMute),
-                        )
-                        .push(Button::new(Text::new("quit")).on_press(Message::Quit))
-                        .push(
-                            Column::new()
-                                .push(
-                                    Container::new(Text::new(subtitles_file).size(13))
-                                        .align_x(iced::Alignment::Center)
-                                        .align_y(iced::Alignment::Center)
-                                        .padding(iced::Padding::new(0.0).left(20.0).right(100.0)),
+            .push(Container::new(
+                Column::new()
+                    .push(
+                        Row::new()
+                            .spacing(5)
+                            .push(
+                                Button::new(Text::new(if self.muted { "Mute" } else { "Unmute" }))
+                                    .on_press(Message::ToggleMute),
+                            )
+                            .push(Button::new(Text::new("quit")).on_press(Message::Quit))
+                            .push(
+                                Column::new()
+                                    .push(
+                                        Container::new(Text::new(subtitles_file).size(13))
+                                            .align_x(iced::Alignment::Center)
+                                            .align_y(iced::Alignment::Center)
+                                            .padding(
+                                                iced::Padding::new(0.0).left(20.0).right(100.0),
+                                            ),
+                                    )
+                                    .push(
+                                        Container::new(Text::new(filename_text).size(13))
+                                            .align_x(iced::Alignment::Center)
+                                            .align_y(iced::Alignment::Center)
+                                            .padding(
+                                                iced::Padding::new(0.0).left(20.0).right(100.0),
+                                            ),
+                                    ),
+                            )
+                            .push(Text::new("Volume:"))
+                            .push(
+                                Slider::new(0.0..=1.0, self.volume, Message::VolumeChanged)
+                                    .step(0.01)
+                                    .width(150.0),
+                            )
+                            .push(Text::new(format!(
+                                "{:.0}%",
+                                if self.muted { 0.0 } else { self.volume * 100.0 }
+                            )))
+                            .push(Text::new("Sub Offset:"))
+                            .push(
+                                Slider::new(
+                                    0.0..=300.0,
+                                    self.subtitle_offset,
+                                    Message::SubtitleOffsetChanged,
                                 )
-                                .push(
-                                    Container::new(Text::new(filename_text).size(13))
-                                        .align_x(iced::Alignment::Center)
-                                        .align_y(iced::Alignment::Center)
-                                        .padding(iced::Padding::new(0.0).left(20.0).right(100.0)),
-                                ),
-                        )
-                        .push(Text::new("Volume:"))
-                        .push(
-                            Slider::new(0.0..=1.0, self.volume, Message::VolumeChanged)
-                                .step(0.01)
+                                .step(5.0)
                                 .width(150.0),
-                        )
-                        .push(Text::new(format!(
-                            "{:.0}%",
-                            if self.muted { 0.0 } else { self.volume * 100.0 }
-                        ))),
-                )
-                .padding(iced::Padding::new(5.0).left(10.0).right(10.0)),
-            )
-            .push(
-                Row::new()
-                    .spacing(5)
-                    .align_y(iced::alignment::Vertical::Center)
-                    .padding(iced::Padding::new(10.0).top(0.0))
-                    .push(
-                        Button::new(Text::new(if self.video.paused() {
-                            "Play"
-                        } else {
-                            "Pause"
-                        }))
-                        .width(80.0)
-                        .on_press(Message::TogglePause),
+                            )
+                            .push(Text::new(format!("{:.0}px", self.subtitle_offset))),
                     )
                     .push(
-                        Button::new(Text::new(if self.video.looping() {
-                            "Disable Loop"
-                        } else {
-                            "Enable Loop"
-                        }))
-                        .width(120.0)
-                        .on_press(Message::ToggleLoop),
-                    )
-                    .push(button("OWNSUBS").on_press(Message::UsingOwnSubs))
-                    .push(button("Open").on_press(Message::Open))
-                    .push(button("OPEN VID FOLDER").on_press(Message::OpenVidFolder))
-                    .push(button("OPEN SUB FOLDER").on_press(Message::OpenSubFolder))
-                    .push(button("Open Subtitles").on_press(Message::OpenSubtitle))
-                    .push(self.next_button())
-                    .push(button("last vid").on_press(Message::OpenLast))
-                    .push(button("press to add at selection").on_press(Message::AddAtSelection))
-                    .push(
-                        Text::new(format!(
-                            "{}:{:02} / {}:{:02}",
-                            self.position as u64 / 60,
-                            self.position as u64 % 60,
-                            self.video.duration().as_secs() / 60,
-                            self.video.duration().as_secs() % 60,
-                        ))
-                        .width(iced::Length::Fill)
-                        .align_x(iced::alignment::Horizontal::Right),
+                        Row::new()
+                            .spacing(5)
+                            .align_y(iced::alignment::Vertical::Center)
+                            .padding(iced::Padding::new(10.0).top(0.0))
+                            .push(
+                                Button::new(Text::new(if self.video.paused() {
+                                    "Play"
+                                } else {
+                                    "Pause"
+                                }))
+                                .width(80.0)
+                                .on_press(Message::TogglePause),
+                            )
+                            .push(
+                                Button::new(Text::new(if self.video.looping() {
+                                    "Disable Loop"
+                                } else {
+                                    "Enable Loop"
+                                }))
+                                .width(120.0)
+                                .on_press(Message::ToggleLoop),
+                            )
+                            .push(button("OWNSUBS").on_press(Message::UsingOwnSubs))
+                            .push(button("Open").on_press(Message::Open))
+                            .push(button("OPEN VID FOLDER").on_press(Message::OpenVidFolder))
+                            .push(button("OPEN SUB FOLDER").on_press(Message::OpenSubFolder))
+                            .push(button("Open Subtitles").on_press(Message::OpenSubtitle))
+                            .push(self.next_button())
+                            .push(button("last vid").on_press(Message::OpenLast))
+                            .push(
+                                button("press to add at selection")
+                                    .on_press(Message::AddAtSelection),
+                            )
+                            .push(self.audio_track_button())
+                            .push(self.subtitle_track_button())
+                            .push(
+                                Text::new(format!(
+                                    "{}:{:02} / {}:{:02}",
+                                    self.position as u64 / 60,
+                                    self.position as u64 % 60,
+                                    self.video.duration().as_secs() / 60,
+                                    self.video.duration().as_secs() % 60,
+                                ))
+                                .width(iced::Length::Fill)
+                                .align_x(iced::alignment::Horizontal::Right),
+                            ),
                     ),
-            )
+            ))
             .into()
     }
 
@@ -217,6 +237,35 @@ impl App {
         }
 
         next_button.into()
+    }
+
+    pub fn audio_track_button(&self) -> Element<'_, Message> {
+        if self.available_audio_tracks.len() > 1 {
+            let next_track = (self.current_audio_track + 1) % self.available_audio_tracks.len();
+            Button::new(Text::new(format!(
+                "Audio: {}",
+                self.available_audio_tracks[self.current_audio_track]
+            )))
+            .on_press(Message::AudioTrackSelected(next_track))
+            .into()
+        } else {
+            Container::new(Text::new("")).into()
+        }
+    }
+
+    pub fn subtitle_track_button(&self) -> Element<'_, Message> {
+        if self.available_subtitle_tracks.len() > 1 {
+            let next_track =
+                (self.current_subtitle_track + 1) % self.available_subtitle_tracks.len();
+            Button::new(Text::new(format!(
+                "Sub: {}",
+                self.available_subtitle_tracks[self.current_subtitle_track]
+            )))
+            .on_press(Message::SubtitleTrackSelected(next_track))
+            .into()
+        } else {
+            Container::new(Text::new("")).into()
+        }
     }
 }
 

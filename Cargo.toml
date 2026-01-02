@@ -24,6 +24,8 @@ lib = "0.0.1"
 srtlib = "0.2.0"
 tokio = { version = "1.47.1", features = ["sync", "time"] }
 
+gstreamer = "0.23"
+
 full = "0.3.0"
 rusqlite = "0.37.0"
 fs = "0.0.5"

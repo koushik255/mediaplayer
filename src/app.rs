@@ -4,12 +4,10 @@ use rusqlite::Connection;
 use rusqlite::Error;
 use rusqlite::Result;
 use rusqlite::params;
-use std::clone;
-use std::io;
-use std::path;
 use std::time::{Duration, SystemTime};
 
 use url::Url;
+use gstreamer::prelude::*;
 
 use ass_parser::{AssFile, Dialogue};
 use srtlib::{Subtitles, Timestamp};
@@ -46,6 +44,9 @@ pub enum Message {
     ManualSelection,
     OverlayPressed,
     UsingOwnSubs,
+    AudioTrackSelected(usize),
+    SubtitleTrackSelected(usize),
+    SubtitleOffsetChanged(f64),
 }
 
 pub struct App {
@@ -76,6 +77,12 @@ pub struct App {
     pub manual_select: Option<usize>,
     pub is_built_in_subs: bool,
     pub file_is_loaded: bool,
+    pub available_audio_tracks: Vec<String>,
+    pub current_audio_track: usize,
+    pub available_subtitle_tracks: Vec<String>,
+    pub current_subtitle_track: usize,
+    pub has_embedded_subtitles: bool,
+    pub subtitle_offset: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -140,9 +147,9 @@ impl Default for App {
             video: Vec::new(),
             subs: Vec::new(),
         };
-        let mut vec = Vec::with_capacity(10);
+        let vec = Vec::with_capacity(10);
 
-        Self {
+        let mut app = Self {
             video,
             position: def_pos,
             dragging: false,
@@ -167,7 +174,18 @@ impl Default for App {
             manual_select: None,
             is_built_in_subs: true,
             file_is_loaded: false,
-        }
+            available_audio_tracks: Vec::new(),
+            current_audio_track: 0,
+            available_subtitle_tracks: Vec::new(),
+            current_subtitle_track: 0,
+            has_embedded_subtitles: false,
+            subtitle_offset: 100.0,
+        };
+
+        app.detect_audio_tracks();
+        app.detect_subtitle_tracks();
+
+        app
     }
 }
 #[derive(Debug)]
@@ -195,7 +213,7 @@ impl App {
                 Task::none()
             }
             Message::LanguageSelected(index, language) => {
-                self.selected_lang = language;
+                self.selected_lang = language.clone();
                 self.selected_index = index;
                 self.manual_select = None;
 
@@ -206,6 +224,11 @@ impl App {
                     "you selected : {} {}",
                     self.selected_lang, self.selected_index
                 );
+
+                let url = Url::from_file_path(language.clone()).expect("error URL");
+                let new_video = Video::new(&url).expect("Error creating new video in pause");
+                self.video_url = PathBuf::from(language.clone());
+                self.video = new_video;
 
                 Task::none()
             }
@@ -304,6 +327,8 @@ impl App {
                     .into_owned()
                     .into();
                 self.video = new_video;
+                self.detect_audio_tracks();
+                self.detect_subtitle_tracks();
 
                 Task::none()
             }
@@ -317,6 +342,8 @@ impl App {
                 self.subtitles = parse_example_subs(last_sub.as_str()).unwrap();
                 self.video_url = PathBuf::from(last_vid.clone());
                 self.subtitle_file = PathBuf::from(last_sub);
+                self.detect_audio_tracks();
+                self.detect_subtitle_tracks();
 
                 Task::none()
             }
@@ -482,6 +509,11 @@ impl App {
                             self.position = 0.0;
                             self.dragging = false;
                             //self.video.set_subtitle_url()
+
+                            // Detect audio tracks
+                            self.detect_audio_tracks();
+                            // Detect subtitle tracks
+                            self.detect_subtitle_tracks();
 
                             // load new subtitle here
                             self.update_active_subtitle();
@@ -660,8 +692,79 @@ impl App {
 
                 Task::none()
             }
+            Message::AudioTrackSelected(track_index) => {
+                self.current_audio_track = track_index;
+                let pipeline = self.video.pipeline();
+                pipeline.set_property("current-audio", track_index as i32);
+                println!("Switched to audio track {}", track_index);
+                Task::none()
+            }
+            Message::SubtitleOffsetChanged(offset) => {
+                self.subtitle_offset = offset;
+                Task::none()
+            }
+            Message::SubtitleTrackSelected(track_index) => {
+                self.current_subtitle_track = track_index;
+                let pipeline = self.video.pipeline();
+                pipeline.set_property("current-text", track_index as i32);
+                println!("Switched to subtitle track {}", track_index);
+                Task::none()
+            }
+            Message::SubtitleOffsetChanged(offset) => {
+                self.subtitle_offset = offset;
+                Task::none()
+            }
         }
     }
+    fn detect_audio_tracks(&mut self) {
+        self.available_audio_tracks.clear();
+        self.current_audio_track = 0;
+
+        let pipeline = self.video.pipeline();
+
+        // Try multiple times to query audio streams (GStreamer may need time to detect streams)
+        for attempt in 0..5 {
+            let num_audio = pipeline.property::<i32>("n-audio");
+            
+            if num_audio > 0 {
+                for i in 0..num_audio {
+                    let track_name = format!("Audio Track {}", i + 1);
+                    self.available_audio_tracks.push(track_name);
+                }
+                println!("Found {} audio track(s) on attempt {}", num_audio, attempt + 1);
+                return;
+            }
+            
+            if attempt < 4 {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+        }
+
+        println!("No audio tracks detected after multiple attempts");
+    }
+
+    fn detect_subtitle_tracks(&mut self) {
+        self.available_subtitle_tracks.clear();
+        self.current_subtitle_track = 0;
+        self.has_embedded_subtitles = false;
+
+        let pipeline = self.video.pipeline();
+
+        // Query the number of text streams
+        let num_text = pipeline.property::<i32>("n-text");
+
+        if num_text > 0 {
+            self.has_embedded_subtitles = true;
+            for i in 0..num_text {
+                let track_name = format!("Subtitle Track {}", i + 1);
+                self.available_subtitle_tracks.push(track_name);
+            }
+            println!("Found {} embedded subtitle track(s)", num_text);
+        } else {
+            println!("No embedded subtitles found");
+        }
+    }
+
     fn update_active_subtitle(&mut self) {
         let mut t = Duration::from_secs_f64(self.position);
         t += Duration::from_secs_f64(self.parsed.unwrap());
