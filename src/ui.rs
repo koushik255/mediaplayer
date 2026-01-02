@@ -2,10 +2,8 @@ use iced::Alignment;
 use iced::Font;
 use iced::Length;
 
-use iced::widget::{button, text_input, Button, Column, Container, Row, Slider, Text};
+use iced::widget::{button, text_input, Button, Column, Container, Row, Slider, Stack, Text};
 use iced::{Element, Padding};
-
-use iced::widget::Stack;
 use iced_aw::style::colors::WHITE;
 use iced_aw::{selection_list::SelectionList, style::selection_list::primary};
 use iced_video_player::VideoPlayer;
@@ -44,7 +42,7 @@ impl App {
                 .on_new_frame(Message::NewFrame)
                 .on_subtitle_text(Message::NewSub),
         )
-        .width(iced::Length::Fixed(1700.0))
+        .width(iced::Length::Fixed(1400.0))
         .height(iced::Length::Fixed(900.0));
 
         let subtitle_layer = Container::new(
@@ -56,18 +54,19 @@ impl App {
         .align_y(iced::Alignment::End)
         .padding(iced::Padding::new(0.0).bottom(self.subtitle_offset as f32));
 
-        // video first then text
         let overlay_stack = Stack::new().push(video_layer).push(subtitle_layer);
 
-        Column::new()
+        let video_with_list = Row::new()
             .push(
                 Container::new(overlay_stack)
                     .align_x(iced::Alignment::Start)
                     .align_y(iced::Alignment::Center)
-                    // Padding for the whole stack
-                    .padding(Padding::new(00.0).left(20.0).top(60.0)),
+                    .padding(Padding::new(0.0).left(20.0).top(60.0)),
             )
-            .push(self.list())
+            .push(self.list());
+
+        Column::new()
+            .push(video_with_list)
             .push(
                 Container::new(
                     text_input("Enter a number...", &self.value)
@@ -217,6 +216,9 @@ impl App {
             .push(button("Manual select Index 2").on_press(Message::ManualSelection));
 
         Container::new(content)
+            .width(Length::Fill)
+            .height(iced::Length::Fixed(900.0))
+            .padding(10)
             .width(Length::Fill)
             .height(Length::Fill)
             .align_x(Alignment::End)

@@ -230,6 +230,9 @@ impl App {
                 self.video_url = PathBuf::from(language.clone());
                 self.video = new_video;
 
+                self.detect_audio_tracks();
+                self.detect_subtitle_tracks();
+
                 Task::none()
             }
             Message::AddAtSelection => {
@@ -244,6 +247,9 @@ impl App {
                 self.video_url = PathBuf::from(self.selected_lang.clone());
 
                 self.video = new_video;
+
+                self.detect_audio_tracks();
+                self.detect_subtitle_tracks();
                 // func
 
                 Task::none()
@@ -708,10 +714,6 @@ impl App {
                 let pipeline = self.video.pipeline();
                 pipeline.set_property("current-text", track_index as i32);
                 println!("Switched to subtitle track {}", track_index);
-                Task::none()
-            }
-            Message::SubtitleOffsetChanged(offset) => {
-                self.subtitle_offset = offset;
                 Task::none()
             }
         }
