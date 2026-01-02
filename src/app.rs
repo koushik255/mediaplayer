@@ -47,6 +47,8 @@ pub enum Message {
     AudioTrackSelected(usize),
     SubtitleTrackSelected(usize),
     SubtitleOffsetChanged(f64),
+    VideoWidthChanged(f32),
+    VideoHeightChanged(f32),
 }
 
 pub struct App {
@@ -83,6 +85,8 @@ pub struct App {
     pub current_subtitle_track: usize,
     pub has_embedded_subtitles: bool,
     pub subtitle_offset: f64,
+    pub video_width: f32,
+    pub video_height: f32,
 }
 
 #[derive(Debug, Clone)]
@@ -180,6 +184,8 @@ impl Default for App {
             current_subtitle_track: 0,
             has_embedded_subtitles: false,
             subtitle_offset: 100.0,
+            video_width: 1400.0,
+            video_height: 900.0,
         };
 
         app.detect_audio_tracks();
@@ -708,6 +714,14 @@ impl App {
             }
             Message::SubtitleOffsetChanged(offset) => {
                 self.subtitle_offset = offset;
+                Task::none()
+            }
+            Message::VideoWidthChanged(width) => {
+                self.video_width = width.clamp(800.0, 1920.0);
+                Task::none()
+            }
+            Message::VideoHeightChanged(height) => {
+                self.video_height = height.clamp(450.0, 1080.0);
                 Task::none()
             }
             Message::SubtitleTrackSelected(track_index) => {

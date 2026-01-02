@@ -2,7 +2,7 @@ use iced::Alignment;
 use iced::Font;
 use iced::Length;
 
-use iced::widget::{Button, Column, Container, Row, Slider, Stack, Text, button, text_input};
+use iced::widget::{button, text_input, Button, Column, Container, Row, Slider, Stack, Text};
 use iced::{Element, Padding};
 use iced_aw::style::colors::WHITE;
 use iced_aw::{selection_list::SelectionList, style::selection_list::primary};
@@ -42,17 +42,32 @@ impl App {
                 .on_new_frame(Message::NewFrame)
                 .on_subtitle_text(Message::NewSub),
         )
-        .width(iced::Length::Fixed(1400.0))
-        .height(iced::Length::Fixed(900.0));
+        .width(iced::Length::Fixed(self.video_width))
+        .height(iced::Length::Fixed(self.video_height));
 
-        let subtitle_layer = Container::new(
+        let subtitle_text = Container::new(
             Text::new(heresubdudebud).size(35).color(WHITE), // the subtitle
         )
-        .width(iced::Length::Fill)
-        .height(iced::Length::Fill)
-        .align_x(iced::Alignment::Center)
-        .align_y(iced::Alignment::End)
-        .padding(iced::Padding::new(0.0).bottom(self.subtitle_offset as f32));
+        .padding(10)
+        .style(|_theme| iced::widget::container::Style {
+            background: Some(iced::Background::Color(iced::Color::from_rgba(
+                0.0, 0.0, 0.0, 0.8,
+            ))),
+            border: iced::border::Border {
+                color: iced::Color::TRANSPARENT,
+                width: 0.0,
+                radius: 5.0.into(),
+            },
+            shadow: iced::Shadow::default(),
+            text_color: Some(WHITE),
+        });
+
+        let subtitle_layer = Container::new(subtitle_text)
+            .width(iced::Length::Fixed(self.video_width))
+            .height(iced::Length::Fixed(self.video_height))
+            .align_x(iced::Alignment::Center)
+            .align_y(iced::Alignment::End)
+            .padding(iced::Padding::new(0.0).bottom(self.subtitle_offset as f32));
 
         let overlay_stack = Stack::new().push(video_layer).push(subtitle_layer);
 
@@ -92,103 +107,265 @@ impl App {
                 .padding(iced::Padding::new(5.0).left(10.0).right(10.0)),
             )
             .push(Container::new(
-                Column::new()
+                Row::new()
+                    .spacing(15)
+                    .align_y(iced::Alignment::End)
+                    .padding(10)
                     .push(
-                        Row::new()
-                            .spacing(5)
-                            .push(
-                                Button::new(Text::new(if self.muted { "Mute" } else { "Unmute" }))
-                                    .on_press(Message::ToggleMute),
-                            )
-                            .push(Button::new(Text::new("quit")).on_press(Message::Quit))
-                            .push(
-                                Column::new()
-                                    .push(
-                                        Container::new(Text::new(subtitles_file).size(13))
-                                            .align_x(iced::Alignment::Center)
-                                            .align_y(iced::Alignment::Center)
-                                            .padding(
-                                                iced::Padding::new(0.0).left(20.0).right(100.0),
-                                            ),
-                                    )
-                                    .push(
-                                        Container::new(Text::new(filename_text).size(13))
-                                            .align_x(iced::Alignment::Center)
-                                            .align_y(iced::Alignment::Center)
-                                            .padding(
-                                                iced::Padding::new(0.0).left(20.0).right(100.0),
-                                            ),
-                                    ),
-                            )
-                            .push(Text::new("Volume:"))
-                            .push(
-                                Slider::new(0.0..=1.0, self.volume, Message::VolumeChanged)
-                                    .step(0.01)
-                                    .width(150.0),
-                            )
-                            .push(Text::new(format!(
-                                "{:.0}%",
-                                if self.muted { 0.0 } else { self.volume * 100.0 }
-                            )))
-                            .push(Text::new("Sub Offset:"))
-                            .push(
-                                Slider::new(
-                                    0.0..=500.0,
-                                    self.subtitle_offset,
-                                    Message::SubtitleOffsetChanged,
+                        Container::new(
+                            Row::new()
+                                .spacing(5)
+                                .push(
+                                    Button::new(Text::new(if self.video.paused() {
+                                        "Play"
+                                    } else {
+                                        "Pause"
+                                    }))
+                                    .width(120.0)
+                                    .on_press(Message::TogglePause),
                                 )
-                                .step(5.0)
-                                .width(150.0),
-                            )
-                            .push(Text::new(format!("{:.0}px", self.subtitle_offset))),
+                                .push(
+                                    Button::new(Text::new(if self.video.looping() {
+                                        "Disable Loop"
+                                    } else {
+                                        "Enable Loop"
+                                    }))
+                                    .width(120.0)
+                                    .on_press(Message::ToggleLoop),
+                                )
+                                .push(self.next_button())
+                                .push(
+                                    Button::new(Text::new("Previous"))
+                                        .width(120.0)
+                                        .on_press(Message::OpenLast),
+                                )
+                                .push(
+                                    Text::new(format!(
+                                        "{}:{:02} / {}:{:02}",
+                                        self.position as u64 / 60,
+                                        self.position as u64 % 60,
+                                        self.video.duration().as_secs() / 60,
+                                        self.video.duration().as_secs() % 60,
+                                    ))
+                                    .width(120.0)
+                                    .align_x(iced::Alignment::Center),
+                                ),
+                        )
+                        .padding(10)
+                        .style(|_theme| iced::widget::container::Style {
+                            background: Some(iced::Background::Color(iced::Color::from_rgb(
+                                0.05, 0.05, 0.05,
+                            ))),
+                            border: iced::border::Border {
+                                color: iced::Color::from_rgb(0.2, 0.2, 0.2),
+                                width: 1.0,
+                                radius: 8.0.into(),
+                            },
+                            shadow: iced::Shadow::default(),
+                            text_color: None,
+                        }),
                     )
                     .push(
-                        Row::new()
-                            .spacing(5)
-                            .align_y(iced::alignment::Vertical::Center)
-                            .padding(iced::Padding::new(10.0).top(0.0))
-                            .push(
-                                Button::new(Text::new(if self.video.paused() {
-                                    "Play"
-                                } else {
-                                    "Pause"
-                                }))
-                                .width(80.0)
-                                .on_press(Message::TogglePause),
-                            )
-                            .push(
-                                Button::new(Text::new(if self.video.looping() {
-                                    "Disable Loop"
-                                } else {
-                                    "Enable Loop"
-                                }))
-                                .width(120.0)
-                                .on_press(Message::ToggleLoop),
-                            )
-                            .push(button("OWNSUBS").on_press(Message::UsingOwnSubs))
-                            .push(button("Open").on_press(Message::Open))
-                            .push(button("OPEN VID FOLDER").on_press(Message::OpenVidFolder))
-                            .push(button("OPEN SUB FOLDER").on_press(Message::OpenSubFolder))
-                            .push(button("Open Subtitles").on_press(Message::OpenSubtitle))
-                            .push(self.next_button())
-                            .push(button("last vid").on_press(Message::OpenLast))
-                            .push(
-                                button("press to add at selection")
-                                    .on_press(Message::AddAtSelection),
-                            )
-                            .push(self.audio_track_button())
-                            .push(self.subtitle_track_button())
-                            .push(
-                                Text::new(format!(
-                                    "{}:{:02} / {}:{:02}",
-                                    self.position as u64 / 60,
-                                    self.position as u64 % 60,
-                                    self.video.duration().as_secs() / 60,
-                                    self.video.duration().as_secs() % 60,
-                                ))
-                                .width(iced::Length::Fill)
-                                .align_x(iced::alignment::Horizontal::Right),
-                            ),
+                        Container::new(
+                            Row::new()
+                                .spacing(5)
+                                .push(button("Open").width(120.0).on_press(Message::Open))
+                                .push(
+                                    button("Open Video Folder")
+                                        .width(140.0)
+                                        .on_press(Message::OpenVidFolder),
+                                )
+                                .push(
+                                    button("Open Subtitle File")
+                                        .width(150.0)
+                                        .on_press(Message::OpenSubtitle),
+                                )
+                                .push(
+                                    button("Open Subtitle Folder")
+                                        .width(160.0)
+                                        .on_press(Message::OpenSubFolder),
+                                )
+                                .push(button("Quit").width(120.0).on_press(Message::Quit)),
+                        )
+                        .padding(10)
+                        .style(|_theme| iced::widget::container::Style {
+                            background: Some(iced::Background::Color(iced::Color::from_rgb(
+                                0.05, 0.05, 0.05,
+                            ))),
+                            border: iced::border::Border {
+                                color: iced::Color::from_rgb(0.2, 0.2, 0.2),
+                                width: 1.0,
+                                radius: 8.0.into(),
+                            },
+                            shadow: iced::Shadow::default(),
+                            text_color: None,
+                        }),
+                    )
+                    .push(
+                        Container::new(
+                            Column::new()
+                                .spacing(8)
+                                .push(
+                                    Button::new(Text::new(if self.muted {
+                                        "Mute"
+                                    } else {
+                                        "Unmute"
+                                    }))
+                                    .width(150.0)
+                                    .on_press(Message::ToggleMute),
+                                )
+                                .push(
+                                    Container::new(
+                                        Column::new()
+                                            .spacing(8)
+                                            .push(
+                                                Row::new()
+                                                    .spacing(5)
+                                                    .push(Text::new("Volume:").color(WHITE))
+                                                    .push(
+                                                        Slider::new(
+                                                            0.0..=1.0,
+                                                            self.volume,
+                                                            Message::VolumeChanged,
+                                                        )
+                                                        .step(0.01)
+                                                        .width(100.0),
+                                                    )
+                                                    .push(
+                                                        Text::new(format!(
+                                                            "{:.0}%",
+                                                            if self.muted {
+                                                                0.0
+                                                            } else {
+                                                                self.volume * 100.0
+                                                            }
+                                                        ))
+                                                        .color(WHITE),
+                                                    ),
+                                            )
+                                            .push(
+                                                Row::new()
+                                                    .spacing(5)
+                                                    .push(Text::new("Offset:").color(WHITE))
+                                                    .push(
+                                                        Slider::new(
+                                                            0.0..=500.0,
+                                                            self.subtitle_offset,
+                                                            Message::SubtitleOffsetChanged,
+                                                        )
+                                                        .step(5.0)
+                                                        .width(100.0),
+                                                    )
+                                                    .push(
+                                                        Text::new(format!(
+                                                            "{:.0}px",
+                                                            self.subtitle_offset
+                                                        ))
+                                                        .color(WHITE),
+                                                    ),
+                                            ),
+                                    )
+                                    .style(|_theme| iced::widget::container::Style {
+                                        background: Some(iced::Background::Color(
+                                            iced::Color::BLACK,
+                                        )),
+                                        border: iced::border::Border {
+                                            color: iced::Color::from_rgb(0.2, 0.2, 0.2),
+                                            width: 1.0,
+                                            radius: 4.0.into(),
+                                        },
+                                        shadow: iced::Shadow::default(),
+                                        text_color: None,
+                                    })
+                                    .padding(10),
+                                )
+                                .push(
+                                    Container::new(
+                                        Row::new()
+                                            .spacing(15)
+                                            .push(
+                                                Row::new()
+                                                    .spacing(5)
+                                                    .push(Text::new("Width:").color(WHITE))
+                                                    .push(
+                                                        Slider::new(
+                                                            800.0..=1920.0,
+                                                            self.video_width,
+                                                            Message::VideoWidthChanged,
+                                                        )
+                                                        .step(10.0)
+                                                        .width(100.0),
+                                                    )
+                                                    .push(
+                                                        Text::new(format!(
+                                                            "{:.0}px",
+                                                            self.video_width
+                                                        ))
+                                                        .color(WHITE),
+                                                    ),
+                                            )
+                                            .push(
+                                                Row::new()
+                                                    .spacing(5)
+                                                    .push(Text::new("Height:").color(WHITE))
+                                                    .push(
+                                                        Slider::new(
+                                                            450.0..=1080.0,
+                                                            self.video_height,
+                                                            Message::VideoHeightChanged,
+                                                        )
+                                                        .step(10.0)
+                                                        .width(100.0),
+                                                    )
+                                                    .push(
+                                                        Text::new(format!(
+                                                            "{:.0}px",
+                                                            self.video_height
+                                                        ))
+                                                        .color(WHITE),
+                                                    ),
+                                            ),
+                                    )
+                                    .style(|_theme| iced::widget::container::Style {
+                                        background: Some(iced::Background::Color(
+                                            iced::Color::BLACK,
+                                        )),
+                                        border: iced::border::Border {
+                                            color: iced::Color::from_rgb(0.2, 0.2, 0.2),
+                                            width: 1.0,
+                                            radius: 4.0.into(),
+                                        },
+                                        shadow: iced::Shadow::default(),
+                                        text_color: None,
+                                    })
+                                    .padding(10),
+                                )
+                                .push(
+                                    button("Own Subs")
+                                        .width(150.0)
+                                        .on_press(Message::UsingOwnSubs),
+                                )
+                                .push(
+                                    button("Add At Selection")
+                                        .width(150.0)
+                                        .on_press(Message::AddAtSelection),
+                                )
+                                .push(self.audio_track_button())
+                                .push(self.subtitle_track_button()),
+                        )
+                        .padding(10)
+                        .style(|_theme| iced::widget::container::Style {
+                            background: Some(iced::Background::Color(iced::Color::from_rgb(
+                                0.05, 0.05, 0.05,
+                            ))),
+                            border: iced::border::Border {
+                                color: iced::Color::from_rgb(0.2, 0.2, 0.2),
+                                width: 1.0,
+                                radius: 8.0.into(),
+                            },
+                            shadow: iced::Shadow::default(),
+                            text_color: None,
+                        }),
                     ),
             ))
             .into()
