@@ -377,6 +377,7 @@ impl App {
                     match sub_text {
                         Some(text) => {
                             println!("sub {}", text);
+                            println!("📺 NEW SUBTITLE DISPLAYED: {}", text);
                         }
                         None => {
                             println!("no subs blud");
