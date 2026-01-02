@@ -6,8 +6,8 @@ use rusqlite::Result;
 use rusqlite::params;
 use std::time::{Duration, SystemTime};
 
-use url::Url;
 use gstreamer::prelude::*;
+use url::Url;
 
 use ass_parser::{AssFile, Dialogue};
 use srtlib::{Subtitles, Timestamp};
@@ -727,16 +727,20 @@ impl App {
         // Try multiple times to query audio streams (GStreamer may need time to detect streams)
         for attempt in 0..5 {
             let num_audio = pipeline.property::<i32>("n-audio");
-            
+
             if num_audio > 0 {
                 for i in 0..num_audio {
                     let track_name = format!("Audio Track {}", i + 1);
                     self.available_audio_tracks.push(track_name);
                 }
-                println!("Found {} audio track(s) on attempt {}", num_audio, attempt + 1);
+                println!(
+                    "Found {} audio track(s) on attempt {}",
+                    num_audio,
+                    attempt + 1
+                );
                 return;
             }
-            
+
             if attempt < 4 {
                 std::thread::sleep(std::time::Duration::from_millis(100));
             }

@@ -5,7 +5,10 @@ use iced::Length;
 use iced::widget::{button, text_input, Button, Column, Container, Row, Slider, Stack, Text};
 use iced::{Element, Padding};
 use iced_aw::style::colors::WHITE;
-use iced_aw::{selection_list::SelectionList, style::selection_list::primary};
+use iced_aw::{
+    menu::Item, menu::Menu, menu::MenuBar, selection_list::SelectionList,
+    style::selection_list::primary,
+};
 use iced_video_player::VideoPlayer;
 
 use crate::app::{App, Message};
@@ -65,7 +68,20 @@ impl App {
             )
             .push(self.list());
 
+        let settings_bar = Container::new(MenuBar::new(vec![Item::with_menu(
+            button("File"),
+            Menu::new(vec![Item::new(
+                button("Open Video Folder").on_press(Message::OpenVidFolder),
+            )]),
+        )]))
+        .width(iced::Length::Fill)
+        .height(iced::Length::Fixed(40.0))
+        .align_x(iced::Alignment::Start)
+        .align_y(iced::Alignment::Center)
+        .padding(iced::Padding::new(10.0));
+
         Column::new()
+            .push(settings_bar)
             .push(video_with_list)
             .push(
                 Container::new(
@@ -133,7 +149,7 @@ impl App {
                             .push(Text::new("Sub Offset:"))
                             .push(
                                 Slider::new(
-                                    0.0..=300.0,
+                                    0.0..=500.0,
                                     self.subtitle_offset,
                                     Message::SubtitleOffsetChanged,
                                 )
