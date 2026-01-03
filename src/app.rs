@@ -76,6 +76,7 @@ pub struct App {
     pub subtitle_folder_current_sub: PathBuf,
     pub video_folder_better: VideoFolder,
     pub sorted_folders: SortedFolder,
+    pub video_entries: Vec<VideoEntry>,
     pub vec: Vec<String>,
     pub selected_lang: String,
     pub selected_index: usize,
@@ -100,6 +101,12 @@ pub struct SubtitleEntry {
     start: Duration,
     end: Duration,
     text: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct VideoEntry {
+    pub display_name: String,
+    pub full_path: PathBuf,
 }
 
 // todos
@@ -183,6 +190,7 @@ impl Default for App {
             subtitle_folder_position: 0,
             subtitle_folder_current_sub: subtitle_file,
             sorted_folders: sorted_def,
+            video_entries: Vec::new(),
             vec,
             selected_lang: "".to_string(),
             selected_index: 0,
@@ -232,26 +240,43 @@ impl App {
                 println!("Overlay button pressed");
                 Task::none()
             }
-            Message::LanguageSelected(index, language) => {
-                self.selected_lang = language.clone();
+            Message::LanguageSelected(index, _language) => {
                 self.selected_index = index;
                 self.manual_select = None;
 
-                if self.selected_lang == "Rust" {
-                    self.vec.push("Rusty".into());
+                if let Some(video_entry) = self.video_entries.get(index) {
+                    if !video_entry.full_path.exists() {
+                        eprintln!("Video file does not exist: {:?}", video_entry.full_path);
+                        return Task::none();
+                    }
+
+                    self.selected_lang = video_entry.display_name.clone();
+                    println!(
+                        "you selected : {} {}",
+                        self.selected_lang, self.selected_index
+                    );
+
+                    let url = match Url::from_file_path(&video_entry.full_path) {
+                        Ok(url) => url,
+                        Err(e) => {
+                            eprintln!("Error creating URL from path: {:?}", e);
+                            return Task::none();
+                        }
+                    };
+
+                    let new_video = match Video::new(&url) {
+                        Ok(video) => video,
+                        Err(e) => {
+                            eprintln!("Error creating new video: {:?}", e);
+                            return Task::none();
+                        }
+                    };
+                    self.video_url = video_entry.full_path.clone();
+                    self.video = new_video;
+
+                    self.detect_audio_tracks();
+                    self.detect_subtitle_tracks();
                 }
-                println!(
-                    "you selected : {} {}",
-                    self.selected_lang, self.selected_index
-                );
-
-                let url = Url::from_file_path(language.clone()).expect("error URL");
-                let new_video = Video::new(&url).expect("Error creating new video in pause");
-                self.video_url = PathBuf::from(language.clone());
-                self.video = new_video;
-
-                self.detect_audio_tracks();
-                self.detect_subtitle_tracks();
 
                 Task::none()
             }
@@ -260,23 +285,39 @@ impl App {
                 println!("{}", self.selected_lang);
                 self.video_folder_better.position = self.selected_index + 1;
 
-                // can func this
-                let url = Url::from_file_path(self.selected_lang.clone()).expect("error URL");
+                if let Some(video_entry) = self.video_entries.get(self.selected_index) {
+                    if !video_entry.full_path.exists() {
+                        eprintln!("Video file does not exist: {:?}", video_entry.full_path);
+                        return Task::none();
+                    }
 
-                let new_video = Video::new(&url).expect("Error creating new video in pause");
-                self.video_url = PathBuf::from(self.selected_lang.clone());
+                    let url = match Url::from_file_path(&video_entry.full_path) {
+                        Ok(url) => url,
+                        Err(e) => {
+                            eprintln!("Error creating URL from path: {:?}", e);
+                            return Task::none();
+                        }
+                    };
 
-                self.video = new_video;
+                    let new_video = match Video::new(&url) {
+                        Ok(video) => video,
+                        Err(e) => {
+                            eprintln!("Error creating new video: {:?}", e);
+                            return Task::none();
+                        }
+                    };
+                    self.video_url = video_entry.full_path.clone();
+                    self.video = new_video;
 
-                self.detect_audio_tracks();
-                self.detect_subtitle_tracks();
-                // func
+                    self.detect_audio_tracks();
+                    self.detect_subtitle_tracks();
+                }
 
                 Task::none()
             }
             Message::ManualSelection => {
-                if let Some(option) = self.vec.get(2) {
-                    option.clone_into(&mut self.selected_lang);
+                if let Some(option) = self.video_entries.get(2) {
+                    self.selected_lang = option.display_name.clone();
                     self.selected_index = 2;
                     self.manual_select = Some(2);
                 }
@@ -342,10 +383,27 @@ impl App {
 
                 let url_her = path_str.as_str();
                 println!("Path string after as str {}", url_her);
-                let url = Url::from_file_path(self.video_folder_better.current_video.clone())
-                    .expect("error URL");
 
-                let new_video = Video::new(&url).expect("Error creating new video in pause");
+                if !self.video_folder_better.current_video.exists() {
+                    eprintln!("Video file does not exist: {:?}", self.video_folder_better.current_video);
+                    return Task::none();
+                }
+
+                let url = match Url::from_file_path(self.video_folder_better.current_video.clone()) {
+                    Ok(url) => url,
+                    Err(e) => {
+                        eprintln!("Error creating URL from path: {:?}", e);
+                        return Task::none();
+                    }
+                };
+
+                let new_video = match Video::new(&url) {
+                    Ok(video) => video,
+                    Err(e) => {
+                        eprintln!("Error creating new video: {:?}", e);
+                        return Task::none();
+                    }
+                };
                 self.video_url = self
                     .video_folder_better
                     .current_video
@@ -362,10 +420,42 @@ impl App {
                 let last_vid = self.last_from_db.vid_file.clone();
                 let last_sub = self.last_from_db.subfile.clone();
                 let last_time = self.last_from_db.time;
-                let video = Video::new(&url::Url::from_file_path(&last_vid).unwrap()).unwrap();
+
+                let last_vid_path = PathBuf::from(&last_vid);
+                if !last_vid_path.exists() {
+                    eprintln!("Last video file does not exist: {:?}", last_vid_path);
+                    return Task::none();
+                }
+
+                let url = match url::Url::from_file_path(&last_vid) {
+                    Ok(url) => url,
+                    Err(e) => {
+                        eprintln!("Error creating URL from last video path: {:?}", e);
+                        return Task::none();
+                    }
+                };
+
+                let video = match Video::new(&url) {
+                    Ok(video) => video,
+                    Err(e) => {
+                        eprintln!("Error creating last video: {:?}", e);
+                        return Task::none();
+                    }
+                };
                 self.video = video;
                 self.position = last_time;
-                self.subtitles = parse_example_subs(last_sub.as_str()).unwrap();
+
+                if !PathBuf::from(&last_sub).exists() {
+                    eprintln!("Last subtitle file does not exist: {:?}", last_sub);
+                } else {
+                    self.subtitles = match parse_example_subs(last_sub.as_str()) {
+                        Ok(subs) => subs,
+                        Err(e) => {
+                            eprintln!("Error parsing subtitles: {:?}", e);
+                            Vec::new()
+                        }
+                    };
+                }
                 self.video_url = PathBuf::from(last_vid.clone());
                 self.subtitle_file = PathBuf::from(last_sub);
                 self.detect_audio_tracks();
@@ -673,11 +763,35 @@ impl App {
                     videos.clone().into_iter().enumerate().collect();
                 self.sorted_folders.video = herebro.clone();
 
+                self.video_entries.clear();
+                self.vec.clear();
+
                 for (_i, vid) in herebro {
-                    self.vec.push(vid.to_string_lossy().into_owned());
+                    let display_name = vid
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .into_owned();
+                    self.vec.push(display_name.clone());
+                    self.video_entries.push(VideoEntry {
+                        display_name,
+                        full_path: vid,
+                    });
                 }
 
                 self.video_folder_better.folder = bomba.clone().to_string_lossy().into_owned();
+
+                if self.video_entries.is_empty() {
+                    self.file_is_loaded = false;
+                    self.selected_index = 0;
+                    self.selected_lang = String::new();
+                    self.manual_select = None;
+                } else {
+                    self.file_is_loaded = true;
+                    self.selected_index = 0;
+                    self.selected_lang = String::new();
+                    self.manual_select = None;
+                }
 
                 Task::none()
             }

@@ -2,7 +2,7 @@ use iced::Alignment;
 use iced::Font;
 use iced::Length;
 
-use iced::widget::{Button, Column, Container, Row, Slider, Stack, Text, button, text_input};
+use iced::widget::{button, text_input, Button, Column, Container, Row, Slider, Stack, Text};
 use iced::{Element, Padding};
 use iced_aw::style::colors::WHITE;
 use iced_aw::{selection_list::SelectionList, style::selection_list::primary};
@@ -271,7 +271,7 @@ impl App {
 
     fn list(&self) -> Element<'_, Message> {
         let selection_list = SelectionList::new_with(
-            &self.vec[..],
+            &self.vec,
             Message::LanguageSelected,
             9.0,
             6.0,
@@ -446,7 +446,7 @@ impl App {
                                     .push(Text::new("Subtitle Offset H:").color(WHITE))
                                     .push(
                                         Slider::new(
-                                            -200.0..=200.0,
+                                            -400.0..=200.0,
                                             self.subtitle_offset_horizontal,
                                             Message::SubtitleOffsetHorizontalChanged,
                                         )
