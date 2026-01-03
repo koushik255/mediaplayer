@@ -47,8 +47,11 @@ pub enum Message {
     AudioTrackSelected(usize),
     SubtitleTrackSelected(usize),
     SubtitleOffsetChanged(f64),
+    SubtitleOffsetVerticalChanged(f64),
+    SubtitleOffsetHorizontalChanged(f64),
     VideoWidthChanged(f32),
     VideoHeightChanged(f32),
+    ToggleSettings,
 }
 
 pub struct App {
@@ -85,8 +88,11 @@ pub struct App {
     pub current_subtitle_track: usize,
     pub has_embedded_subtitles: bool,
     pub subtitle_offset: f64,
+    pub subtitle_offset_vertical: f64,
+    pub subtitle_offset_horizontal: f64,
     pub video_width: f32,
     pub video_height: f32,
+    pub settings_open: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -118,6 +124,11 @@ impl Default for App {
                 println!("Error {}", e);
             }
         }
+
+        let (subtitle_offset, subtitle_offset_vertical, subtitle_offset_horizontal, video_width, video_height, _volume) = match load_settings() {
+            Ok(settings) => settings,
+            Err(_) => (100.0, 100.0, 0.0, 1450.0, 1080.0, 1.0),
+        };
         println!("Video initialized with volume: 1.0");
         let def_sub = lastdbdb.subfile.as_str();
         println!("CHECKING IF DEFSUB FUCK UP AS STR {}", def_sub);
@@ -183,9 +194,12 @@ impl Default for App {
             available_subtitle_tracks: Vec::new(),
             current_subtitle_track: 0,
             has_embedded_subtitles: false,
-            subtitle_offset: 100.0,
-            video_width: 1400.0,
-            video_height: 900.0,
+            subtitle_offset,
+            subtitle_offset_vertical,
+            subtitle_offset_horizontal,
+            video_width,
+            video_height,
+            settings_open: false,
         };
 
         app.detect_audio_tracks();
@@ -446,11 +460,6 @@ impl App {
                 Task::none()
             }
             Message::Quit => {
-                //db_get_last();
-                //
-                //
-                //
-                //
                 println!(
                     "THINGS TO SAVE TO DB FILE:{:?}\n TIME: {:?} SUBTILTLE-FILE: {:?}",
                     self.video_url,
@@ -463,6 +472,15 @@ impl App {
                     self.subtitle_file.clone().to_string_lossy().into_owned(),
                 );
                 db(new_pos, new_url, new_subfile);
+
+                save_settings(
+                    self.subtitle_offset,
+                    self.subtitle_offset_vertical,
+                    self.subtitle_offset_horizontal,
+                    self.video_width,
+                    self.video_height,
+                    self.volume,
+                );
 
                 println!("both dbed worked");
 
@@ -724,6 +742,18 @@ impl App {
                 self.video_height = height.clamp(450.0, 1080.0);
                 Task::none()
             }
+            Message::SubtitleOffsetVerticalChanged(offset) => {
+                self.subtitle_offset_vertical = offset;
+                Task::none()
+            }
+            Message::SubtitleOffsetHorizontalChanged(offset) => {
+                self.subtitle_offset_horizontal = offset;
+                Task::none()
+            }
+            Message::ToggleSettings => {
+                self.settings_open = !self.settings_open;
+                Task::none()
+            }
             Message::SubtitleTrackSelected(track_index) => {
                 self.current_subtitle_track = track_index;
                 let pipeline = self.video.pipeline();
@@ -921,6 +951,78 @@ fn db(time: f64, vid_file: String, subfile: String) {
     .expect("erroing inserting last");
 
     println!("succesfully added last to db");
+}
+
+fn save_settings(
+    subtitle_offset: f64,
+    subtitle_offset_vertical: f64,
+    subtitle_offset_horizontal: f64,
+    video_width: f32,
+    video_height: f32,
+    volume: f64,
+) {
+    let conn = Connection::open("mydb.sqlite3").expect("error connecting to db");
+    println!("Saving settings to db");
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS settings (
+                    subtitle_offset REAL,
+                    subtitle_offset_vertical REAL,
+                    subtitle_offset_horizontal REAL,
+                    video_width REAL,
+                    video_height REAL,
+                    volume REAL
+)",
+        [],
+    )
+    .expect("error creating settings table");
+    conn.execute("DELETE from settings", [])
+        .expect("Error deleting settings table");
+
+    conn.execute(
+        "INSERT INTO settings (subtitle_offset, subtitle_offset_vertical, subtitle_offset_horizontal, video_width, video_height, volume) VALUES (?1,?2,?3,?4,?5,?6)",
+        params![
+            subtitle_offset,
+            subtitle_offset_vertical,
+            subtitle_offset_horizontal,
+            video_width,
+            video_height,
+            volume
+        ],
+    )
+    .expect("error inserting settings");
+
+    println!("successfully saved settings");
+}
+
+fn load_settings() -> Result<(f64, f64, f64, f32, f32, f64), String> {
+    let conn =
+        Connection::open("mydb.sqlite3").map_err(|e| format!("Error connecting to db: {}", e))?;
+
+    let mut stmt = conn
+        .prepare("SELECT subtitle_offset, subtitle_offset_vertical, subtitle_offset_horizontal, video_width, video_height, volume FROM settings")
+        .map_err(|e| format!("Statement error {}", e))?;
+
+    match stmt.query_row([], |row| {
+        Ok((
+            row.get(0)?,
+            row.get(1)?,
+            row.get(2)?,
+            row.get(3)?,
+            row.get(4)?,
+            row.get(5)?,
+        ))
+    }) {
+        Ok(settings) => {
+            println!("Loaded settings: {:?}", settings);
+            Ok(settings)
+        }
+        Err(Error::QueryReturnedNoRows) => {
+            println!("No settings found, using defaults");
+            Err("No settings found".to_string())
+        }
+        Err(e) => Err(format!("Database error {}", e)),
+    }
 }
 
 fn db_for_each(time: f64, vid_file: String, subfile: String) {
