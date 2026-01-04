@@ -35,8 +35,11 @@ pub enum Message {
     VideoHeightChanged(f32),
     ToggleSettings,
     TakeScreenshotURI,
-    TakeScreenshotDirect,
     ScreenshotSaved(std::path::PathBuf),
+    OpenDefaultVideoPicker,
+    SetDefaultVideo(Result<std::path::PathBuf, String>),
+    OpenScreenshotFolderPicker,
+    SetScreenshotFolder(Result<std::path::PathBuf, String>),
 }
 
 #[derive(Debug, Clone)]

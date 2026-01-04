@@ -1,6 +1,7 @@
 use iced::Alignment;
 use iced::Font;
 use iced::Length;
+use std::path::{Path, PathBuf};
 
 use iced::widget::{button, Button, Column, Container, Row, Slider, Stack, Text};
 use iced::{Element, Padding};
@@ -236,11 +237,6 @@ impl App {
                                             button("Screenshot (URI)")
                                                 .width(140.0)
                                                 .on_press(Message::TakeScreenshotURI),
-                                        )
-                                        .push(
-                                            button("Screenshot (Direct)")
-                                                .width(140.0)
-                                                .on_press(Message::TakeScreenshotDirect),
                                         )
                                         .push(button("Quit").width(120.0).on_press(Message::Quit)),
                                 )
@@ -503,6 +499,50 @@ impl App {
                                             self.subtitle_offset_horizontal
                                         ))
                                         .color(WHITE),
+                                    ),
+                            )
+                            .push(
+                                Row::new()
+                                    .spacing(10)
+                                    .push(Text::new("Default Video:").color(WHITE))
+                                    .push(
+                                        Button::new(Text::new(
+                                            self.default_video_path
+                                                .as_ref()
+                                                .map(|p| {
+                                                    PathBuf::from(p)
+                                                        .file_name()
+                                                        .and_then(|n| n.to_str())
+                                                        .unwrap_or("None selected")
+                                                        .to_string()
+                                                })
+                                                .unwrap_or_else(|| "None selected".to_string()),
+                                        ))
+                                        .width(280.0)
+                                        .on_press(Message::OpenDefaultVideoPicker),
+                                    ),
+                            )
+                            .push(
+                                Row::new()
+                                    .spacing(10)
+                                    .push(Text::new("Screenshot Folder:").color(WHITE))
+                                    .push(
+                                        Button::new(Text::new(
+                                            self.screenshot_folder
+                                                .as_ref()
+                                                .map(|p| {
+                                                    let path = Path::new(p);
+                                                    path.file_name()
+                                                        .and_then(|n| n.to_str())
+                                                        .unwrap_or_else(|| {
+                                                            path.to_str().unwrap_or("None")
+                                                        })
+                                                        .to_string()
+                                                })
+                                                .unwrap_or_else(|| "None selected".to_string()),
+                                        ))
+                                        .width(280.0)
+                                        .on_press(Message::OpenScreenshotFolderPicker),
                                     ),
                             ),
                     )

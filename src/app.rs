@@ -5,6 +5,7 @@ use std::fs::read_dir;
 use std::path::{Path, PathBuf};
 
 use crate::app_types::*;
+use crate::config::{load_config, save_config, AppConfig};
 use crate::database::{db, db_get_last, save_settings, load_settings};
 use crate::subtitles::parse_example_subs;
 
@@ -49,6 +50,8 @@ pub struct App {
     pub video_width: f32,
     pub video_height: f32,
     pub settings_open: bool,
+    pub default_video_path: Option<String>,
+    pub screenshot_folder: Option<String>,
 }
 
 impl Default for App {
@@ -70,9 +73,9 @@ impl Default for App {
         }
 
         let (
-            subtitle_offset,
-            subtitle_offset_vertical,
-            subtitle_offset_horizontal,
+            _subtitle_offset,
+            _subtitle_offset_vertical,
+            _subtitle_offset_horizontal,
             video_width,
             video_height,
             _volume,
@@ -80,13 +83,34 @@ impl Default for App {
             Ok(settings) => settings,
             Err(_) => (100.0, 100.0, 0.0, 1450.0, 1080.0, 1.0),
         };
+
+        let app_config = match load_config() {
+            Ok(config) => config,
+            Err(e) => {
+                println!("Failed to load config: {}", e);
+                AppConfig::default()
+            }
+        };
+
         println!("Video initialized with volume: 1.0");
         let def_sub = lastdbdb.subfile.as_str();
         println!("CHECKING IF DEFSUB FUCK UP AS STR {}", def_sub);
         // you would need to change this to the dir
         // let default_vid = "/home/koushikk/Documents/Rust2/iced-video-crate/src/defvid.mp4";
-        let default_vid = "/home/koushikk/Downloads/foden.mkv";
+        let hardcoded_default_vid = "/home/koushikk/Downloads/foden.mkv";
         let default_sub = "/home/koushikk/Documents/Rust2/iced-video-crate/src/simple.srt";
+
+        let default_vid = app_config
+            .default_video_path
+            .as_ref()
+            .and_then(|p| {
+                if Path::new(p).exists() {
+                    Some(p.as_str())
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(hardcoded_default_vid);
 
         let mut video = Video::new(&url::Url::from_file_path(default_vid).unwrap()).unwrap();
 
@@ -144,12 +168,14 @@ impl Default for App {
             available_subtitle_tracks: Vec::new(),
             current_subtitle_track: 0,
             has_embedded_subtitles: false,
-            subtitle_offset,
-            subtitle_offset_vertical,
-            subtitle_offset_horizontal,
+            subtitle_offset: app_config.subtitle_offset,
+            subtitle_offset_vertical: app_config.subtitle_offset_vertical,
+            subtitle_offset_horizontal: app_config.subtitle_offset_horizontal,
             video_width,
             video_height,
             settings_open: false,
+            default_video_path: app_config.default_video_path,
+            screenshot_folder: app_config.screenshot_folder,
         };
 
         app.detect_audio_tracks();
@@ -502,6 +528,18 @@ impl App {
                     self.volume,
                 );
 
+                let app_config = AppConfig {
+                    default_video_path: self.default_video_path.clone(),
+                    screenshot_folder: self.screenshot_folder.clone(),
+                    subtitle_offset: self.subtitle_offset,
+                    subtitle_offset_vertical: self.subtitle_offset_vertical,
+                    subtitle_offset_horizontal: self.subtitle_offset_horizontal,
+                };
+
+                if let Err(e) = save_config(&app_config) {
+                    eprintln!("Failed to save config: {}", e);
+                }
+
                 println!("both dbed worked");
 
                 iced::exit()
@@ -789,47 +827,37 @@ impl App {
 
                 let default_name = format!("screenshot_uri_{}.png", filename);
 
-                Task::perform(
-                    async move {
-                        let handle = rfd::AsyncFileDialog::new()
-                            .set_title("Save Screenshot (URI Method)")
-                            .set_file_name(&default_name)
-                            .add_filter("PNG Image", &["png"])
-                            .save_file()
-                            .await;
+                let use_auto_save = if let Some(folder) = &self.screenshot_folder {
+                    let folder_path = Path::new(folder);
+                    folder_path.exists() && folder_path.is_dir()
+                } else {
+                    false
+                };
 
-                        match handle {
-                            Some(path) => path.path().to_path_buf(),
-                            None => std::path::PathBuf::from(""),
-                        }
-                    },
-                    Message::ScreenshotSaved,
-                )
-            }
-            Message::TakeScreenshotDirect => {
-                let filename = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs();
+                if use_auto_save {
+                    let folder = self.screenshot_folder.as_ref().unwrap();
+                    let filename = format!("screenshot_{}.png", filename);
+                    let save_path = PathBuf::from(folder).join(&filename);
+                    self.capture_and_save_screenshot(&save_path);
+                    Task::none()
+                } else {
+                    Task::perform(
+                        async move {
+                            let handle = rfd::AsyncFileDialog::new()
+                                .set_title("Save Screenshot (URI Method)")
+                                .set_file_name(&default_name)
+                                .add_filter("PNG Image", &["png"])
+                                .save_file()
+                                .await;
 
-                let default_name = format!("screenshot_direct_{}.png", filename);
-
-                Task::perform(
-                    async move {
-                        let handle = rfd::AsyncFileDialog::new()
-                            .set_title("Save Screenshot (Direct Path Method)")
-                            .set_file_name(&default_name)
-                            .add_filter("PNG Image", &["png"])
-                            .save_file()
-                            .await;
-
-                        match handle {
-                            Some(path) => path.path().to_path_buf(),
-                            None => std::path::PathBuf::from(""),
-                        }
-                    },
-                    Message::ScreenshotSaved,
-                )
+                            match handle {
+                                Some(path) => path.path().to_path_buf(),
+                                None => std::path::PathBuf::from(""),
+                            }
+                        },
+                        Message::ScreenshotSaved,
+                    )
+                }
             }
             Message::ScreenshotSaved(path) => {
                 if !path.as_os_str().is_empty() {
@@ -842,6 +870,87 @@ impl App {
                 let pipeline = self.video.pipeline();
                 pipeline.set_property("current-text", track_index as i32);
                 println!("Switched to subtitle track {}", track_index);
+                Task::none()
+            }
+            Message::OpenDefaultVideoPicker => Task::perform(
+                async {
+                    let handle = rfd::AsyncFileDialog::new()
+                        .set_title("Select Default Video")
+                        .add_filter("Video files", &["mp4", "avi", "mkv", "mov", "wmv"])
+                        .pick_file()
+                        .await;
+                    match handle {
+                        Some(path) => Ok(path.path().to_path_buf()),
+                        None => Err("No file selected".to_string()),
+                    }
+                },
+                Message::SetDefaultVideo,
+            ),
+            Message::SetDefaultVideo(result) => {
+                self.default_video_path = match result {
+                    Ok(path) => {
+                        if path.exists() {
+                            Some(path.to_string_lossy().into_owned())
+                        } else {
+                            eprintln!("Selected file does not exist: {:?}", path);
+                            None
+                        }
+                    }
+                    Err(_) => None,
+                };
+
+                let app_config = AppConfig {
+                    default_video_path: self.default_video_path.clone(),
+                    screenshot_folder: self.screenshot_folder.clone(),
+                    subtitle_offset: self.subtitle_offset,
+                    subtitle_offset_vertical: self.subtitle_offset_vertical,
+                    subtitle_offset_horizontal: self.subtitle_offset_horizontal,
+                };
+
+                if let Err(e) = save_config(&app_config) {
+                    eprintln!("Failed to save config: {}", e);
+                }
+
+                Task::none()
+            }
+            Message::OpenScreenshotFolderPicker => Task::perform(
+                async {
+                    let handle = rfd::AsyncFileDialog::new()
+                        .set_title("Select Screenshot Folder")
+                        .pick_folder()
+                        .await;
+                    match handle {
+                        Some(path) => Ok(path.path().to_path_buf()),
+                        None => Err("No folder selected".to_string()),
+                    }
+                },
+                Message::SetScreenshotFolder,
+            ),
+            Message::SetScreenshotFolder(result) => {
+                self.screenshot_folder = match result {
+                    Ok(path) => {
+                        if path.exists() && path.is_dir() {
+                            Some(path.to_string_lossy().into_owned())
+                        } else {
+                            eprintln!("Selected path is not a valid directory: {:?}", path);
+                            None
+                        }
+                    }
+                    Err(_) => None,
+                };
+
+                let app_config = AppConfig {
+                    default_video_path: self.default_video_path.clone(),
+                    screenshot_folder: self.screenshot_folder.clone(),
+                    subtitle_offset: self.subtitle_offset,
+                    subtitle_offset_vertical: self.subtitle_offset_vertical,
+                    subtitle_offset_horizontal: self.subtitle_offset_horizontal,
+                };
+
+                if let Err(e) = save_config(&app_config) {
+                    eprintln!("Failed to save config: {}", e);
+                }
+
                 Task::none()
             }
         }
