@@ -2,7 +2,7 @@ use iced::Alignment;
 use iced::Font;
 use iced::Length;
 
-use iced::widget::{button, text_input, Button, Column, Container, Row, Slider, Stack, Text};
+use iced::widget::{Button, Column, Container, Row, Slider, Stack, Text, button, text_input};
 use iced::{Element, Padding};
 use iced_aw::style::colors::WHITE;
 use iced_aw::{selection_list::SelectionList, style::selection_list::primary};
@@ -11,7 +11,7 @@ use iced_video_player::VideoPlayer;
 use crate::app::{App, Message};
 
 impl App {
-    pub fn view(&self) -> Element<Message> {
+    pub fn view(&self) -> Element<'_, Message> {
         let main_content = self.main_view();
 
         if self.settings_open {
@@ -28,8 +28,8 @@ impl App {
         }
     }
 
-    fn main_view(&self) -> Element<Message> {
-        let filename_text = match self.video_url.file_name() {
+    fn main_view(&self) -> Element<'_, Message> {
+        let _filename_text = match self.video_url.file_name() {
             Some(name) => name.to_string_lossy().into_owned(),
             None => {
                 eprintln!(
@@ -40,7 +40,7 @@ impl App {
             }
         };
 
-        let subtitles_file = self
+        let _subtitles_file = self
             .subtitle_file
             .file_name()
             .unwrap_or_default()
@@ -185,6 +185,16 @@ impl App {
                                     .width(160.0)
                                     .on_press(Message::OpenSubFolder),
                             )
+                            .push(
+                                button("Screenshot (URI)")
+                                    .width(140.0)
+                                    .on_press(Message::TakeScreenshotURI),
+                            )
+                            .push(
+                                button("Screenshot (Direct)")
+                                    .width(140.0)
+                                    .on_press(Message::TakeScreenshotDirect),
+                            )
                             .push(button("Quit").width(120.0).on_press(Message::Quit)),
                     )
                     .padding(10)
@@ -302,7 +312,7 @@ impl App {
             .into()
     }
 
-    pub fn next_button(&self) -> Element<Message> {
+    pub fn next_button(&self) -> Element<'_, Message> {
         let mut next_button = Button::new(Text::new(if self.file_is_loaded {
             "Next video"
         } else {

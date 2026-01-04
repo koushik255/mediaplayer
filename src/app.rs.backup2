@@ -136,14 +136,7 @@ impl Default for App {
             }
         }
 
-        let (
-            subtitle_offset,
-            subtitle_offset_vertical,
-            subtitle_offset_horizontal,
-            video_width,
-            video_height,
-            _volume,
-        ) = match load_settings() {
+        let (subtitle_offset, subtitle_offset_vertical, subtitle_offset_horizontal, video_width, video_height, _volume) = match load_settings() {
             Ok(settings) => settings,
             Err(_) => (100.0, 100.0, 0.0, 1450.0, 1080.0, 1.0),
         };
@@ -396,15 +389,11 @@ impl App {
                 println!("Path string after as str {}", url_her);
 
                 if !self.video_folder_better.current_video.exists() {
-                    eprintln!(
-                        "Video file does not exist: {:?}",
-                        self.video_folder_better.current_video
-                    );
+                    eprintln!("Video file does not exist: {:?}", self.video_folder_better.current_video);
                     return Task::none();
                 }
 
-                let url = match Url::from_file_path(self.video_folder_better.current_video.clone())
-                {
+                let url = match Url::from_file_path(self.video_folder_better.current_video.clone()) {
                     Ok(url) => url,
                     Err(e) => {
                         eprintln!("Error creating URL from path: {:?}", e);
@@ -954,6 +943,7 @@ impl App {
 
         let pipeline = self.video.pipeline();
 
+        // Try multiple times to query audio streams (GStreamer may need time to detect streams)
         for attempt in 0..5 {
             let num_audio = pipeline.property::<i32>("n-audio");
 
@@ -978,186 +968,216 @@ impl App {
         println!("No audio tracks detected after multiple attempts");
     }
 
-    fn detect_subtitle_tracks(&mut self) {
-        self.available_subtitle_tracks.clear();
-        self.current_subtitle_track = 0;
-
-        let pipeline = self.video.pipeline();
-
-        for attempt in 0..5 {
-            let num_subs = pipeline.property::<i32>("n-text");
-
-            if num_subs > 0 {
-                for i in 0..num_subs {
-                    let track_name = format!("Subtitle Track {}", i + 1);
-                    self.available_subtitle_tracks.push(track_name);
-                }
-                self.has_embedded_subtitles = true;
-                println!(
-                    "Found {} subtitle track(s) on attempt {}",
-                    num_subs,
-                    attempt + 1
-                );
-                return;
-            }
-
-            if attempt < 4 {
-                std::thread::sleep(std::time::Duration::from_millis(100));
-            }
-        }
-
-        self.has_embedded_subtitles = false;
-        println!("No embedded subtitle tracks detected after multiple attempts");
-    }
-
-    fn update_active_subtitle(&mut self) {
-        let current_time = Duration::from_secs_f64(self.position);
-
-        self.active_subtitle = self
-            .subtitles
-            .iter()
-            .find(|sub| current_time >= sub.start && current_time <= sub.end)
-            .map(|sub| sub.text.clone());
-    }
-
     fn capture_and_save_screenshot(&mut self, save_path: &PathBuf) {
-        if let Err(e) = self.capture_screenshot_with_gstreamer(save_path) {
-            eprintln!("Failed to capture screenshot: {}", e);
-        }
+        self.capture_screenshot_uri(save_path);
     }
 
-    fn capture_screenshot_with_gstreamer(&mut self, save_path: &PathBuf) -> Result<(), String> {
+    fn capture_screenshot_uri(&mut self, save_path: &PathBuf) {
         use gstreamer as gst;
 
-        gstreamer::init().map_err(|e| format!("Failed to initialize GStreamer: {}", e))?;
+        let video_uri = self.video.pipeline().property::<String>("current-uri");
+        let current_position = self.position;
 
-        let video_path = self.video_url.clone();
+        println!("Capturing screenshot at position: {:.2}s", current_position);
+        println!("Video URI: {}", video_uri);
+        println!("Saving to: {:?}", save_path);
 
-        let position_nanos = (self.position * 1_000_000_000.0) as u64;
-
-        let filesrc = gst::ElementFactory::make("filesrc")
-            .build()
-            .map_err(|e| format!("Failed to create filesrc: {}", e))?;
-
-        let decodebin = gst::ElementFactory::make("decodebin")
-            .build()
-            .map_err(|e| format!("Failed to create decodebin: {}", e))?;
-
-        let videoconvert = gst::ElementFactory::make("videoconvert")
-            .build()
-            .map_err(|e| format!("Failed to create videoconvert: {}", e))?;
-
-        let videoscale = gst::ElementFactory::make("videoscale")
-            .build()
-            .map_err(|e| format!("Failed to create videoscale: {}", e))?;
-
-        let pngenc = gst::ElementFactory::make("pngenc")
-            .build()
-            .map_err(|e| format!("Failed to create pngenc: {}", e))?;
-
-        let filesink = gst::ElementFactory::make("filesink")
-            .build()
-            .map_err(|e| format!("Failed to create filesink: {}", e))?;
-
-        let video_path_str = video_path.to_str().ok_or("Invalid video path")?;
-        filesrc.set_property("location", &video_path_str);
-
-        let save_path_str = save_path.to_str().ok_or("Invalid save path")?;
-        filesink.set_property("location", &save_path_str);
-
-        let pipeline = gst::Pipeline::new();
-        pipeline
-            .add_many(&[&filesrc, &decodebin, &videoconvert, &videoscale, &pngenc, &filesink])
-            .map_err(|e| format!("Failed to add elements to pipeline: {}", e))?;
-
-        filesrc
-            .link(&decodebin)
-            .map_err(|e| format!("Failed to link filesrc to decodebin: {}", e))?;
-
-        let videoconvert_weak = videoconvert.downgrade();
-        decodebin
-            .connect_pad_added(move |_, src_pad| {
-                let videoconvert = match videoconvert_weak.upgrade() {
-                    Some(vc) => vc,
-                    None => return,
-                };
-
-                if let Some(sink_pad) = videoconvert.static_pad("sink") {
-                    if src_pad.current_caps().map_or(false, |caps| {
-                        caps.iter().any(|c| c.name().as_str() == "video/x-raw")
-                    }) {
-                        let _ = src_pad.link(&sink_pad);
-                    }
-                }
-            });
-
-        videoconvert
-            .link(&videoscale)
-            .map_err(|e| format!("Failed to link videoconvert to videoscale: {}", e))?;
-
-        videoscale
-            .link(&pngenc)
-            .map_err(|e| format!("Failed to link videoscale to pngenc: {}", e))?;
-
-        pngenc
-            .link(&filesink)
-            .map_err(|e| format!("Failed to link pngenc to filesink: {}", e))?;
-
-        pipeline
-            .set_state(gst::State::Playing)
-            .map_err(|e| format!("Failed to set pipeline to playing: {}", e))?;
-
-        let pipeline_clone = pipeline.clone();
-        let seek_pos = gst::ClockTime::from_nseconds(position_nanos);
-
-        std::thread::sleep(std::time::Duration::from_millis(100));
-
-        if let Err(e) =
-            pipeline.seek_simple(gst::SeekFlags::FLUSH | gst::SeekFlags::KEY_UNIT, seek_pos)
-        {
-            eprintln!("Warning: Failed to seek to position: {}", e);
-        }
-
-        let bus = pipeline.bus().ok_or("Failed to get bus from pipeline")?;
-
-        let timeout = gst::ClockTime::from_seconds(5);
-        let mut eos_received = false;
-        let start_time = std::time::Instant::now();
-
-        while !eos_received && start_time.elapsed() < std::time::Duration::from_secs(3) {
-            let msg = bus.timed_pop(gst::ClockTime::from_mseconds(100));
-
-            if let Some(msg) = msg {
-                match msg.view() {
-                    gst::MessageView::Eos(..) => {
-                        eos_received = true;
-                    }
-                    gst::MessageView::Error(err) => {
-                        pipeline_clone.set_state(gst::State::Null).ok();
-                        return Err(format!(
-                            "Error from GStreamer: {} ({})",
-                            err.error(),
-                            err.debug().unwrap_or_default()
-                        ));
-                    }
-                    _ => {}
+        let decoded_path = if video_uri.starts_with("file://") {
+            match url::percent_decode(&video_uri[7..]) {
+                Ok(decoded) => format!("file://{}", decoded),
+                Err(e) => {
+                    eprintln!("Failed to decode URI: {}", e);
+                    return;
                 }
             }
-        }
+        } else {
+            video_uri.clone()
+        };
 
-        pipeline
-            .set_state(gst::State::Null)
-            .map_err(|e| format!("Failed to set pipeline to null: {}", e))?;
-
-        println!(
-            "Screenshot saved successfully to: {:?} (position: {:.2}s)",
-            save_path, self.position
+        let pipeline_str = format!(
+            "gst-launch-1.0 playbin uri={} ! videoconvert ! pngenc ! filesink location={}",
+            decoded_path,
+            save_path.to_string_lossy()
         );
-        Ok(())
-    }
-}
 
-fn ts_to_duration(t: &Timestamp) -> Duration {
+        println!("Screenshot command: {}", pipeline_str);
+
+        let result = std::process::Command::new("gst-launch-1.0")
+            .args(&[
+                "playbin",
+                &format!("uri={}", decoded_path),
+                "!",
+                "videoconvert",
+                "!",
+                "pngenc",
+                "!",
+                &format!("filesink location={}", save_path.to_string_lossy())
+            ])
+            .output();
+
+        match result {
+            Ok(output) => {
+                if output.status.success() {
+                    println!("Screenshot saved successfully to: {:?}", save_path);
+                } else {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    eprintln!("Screenshot failed: {}", stderr);
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to run gst-launch-1.0: {:?}", e);
+            }
+        }
+    }
+
+    fn capture_screenshot_direct(&mut self, save_path: &PathBuf) {
+        use gstreamer as gst;
+
+        let video_path = self.video_url.to_string_lossy();
+        let current_position = self.position;
+
+        println!("Capturing screenshot at position: {:.2}s", current_position);
+        println!("Video path: {}", video_path);
+        println!("Saving to: {:?}", save_path);
+
+        let pipeline_str = format!(
+            "gst-launch-1.0 playbin uri=file://{} ! videoconvert ! pngenc ! filesink location={}",
+            video_path,
+            save_path.to_string_lossy()
+        );
+
+        println!("Screenshot command: {}", pipeline_str);
+
+        let result = std::process::Command::new("gst-launch-1.0")
+            .args(&[
+                "playbin",
+                &format!("uri=file://{}", video_path),
+                "!",
+                "videoconvert",
+                "!",
+                "pngenc",
+                "!",
+                &format!("filesink location={}", save_path.to_string_lossy())
+            ])
+            .output();
+
+        match result {
+            Ok(output) => {
+                if output.status.success() {
+                    println!("Screenshot saved successfully to: {:?}", save_path);
+                } else {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    eprintln!("Screenshot failed: {}", stderr);
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to run gst-launch-1.0: {:?}", e);
+            }
+        }
+    }
+
+    fn capture_screenshot_uri(&mut self, save_path: &PathBuf) {
+        use gstreamer as gst;
+
+        let video_uri = self.video.pipeline().property::<String>("current-uri");
+        let current_position = self.position;
+
+        println!("Capturing screenshot at position: {:.2}s", current_position);
+        println!("Video URI: {}", video_uri);
+        println!("Saving to: {:?}", save_path);
+
+        let decoded_path = if video_uri.starts_with("file://") {
+            match url::percent_decode(&video_uri[7..]) {
+                Ok(decoded) => format!("file://{}", decoded),
+                Err(e) => {
+                    eprintln!("Failed to decode URI: {}", e);
+                    return;
+                }
+            }
+        } else {
+            video_uri.clone()
+        };
+
+        let pipeline_str = format!(
+            "gst-launch-1.0 playbin uri={} ! videoconvert ! pngenc ! filesink location={}",
+            decoded_path,
+            save_path.to_string_lossy()
+        );
+
+        println!("Screenshot command: {}", pipeline_str);
+
+        let result = std::process::Command::new("gst-launch-1.0")
+            .args(&[
+                "playbin",
+                &format!("uri={}", decoded_path),
+                "!",
+                "videoconvert",
+                "!",
+                "pngenc",
+                "!",
+                &format!("filesink location={}", save_path.to_string_lossy())
+            ])
+            .output();
+
+        match result {
+            Ok(output) => {
+                if output.status.success() {
+                    println!("Screenshot saved successfully to: {:?}", save_path);
+                } else {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    eprintln!("Screenshot failed: {}", stderr);
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to run gst-launch-1.0: {:?}", e);
+            }
+        }
+    }
+
+    fn capture_screenshot_direct(&mut self, save_path: &PathBuf) {
+        let video_path = self.video_url.to_string_lossy();
+        let current_position = self.position;
+
+        println!("Capturing screenshot at position: {:.2}s", current_position);
+        println!("Video path: {}", video_path);
+        println!("Saving to: {:?}", save_path);
+
+        let pipeline_str = format!(
+            "gst-launch-1.0 playbin uri=file://{} ! videoconvert ! pngenc ! filesink location={}",
+            video_path,
+            save_path.to_string_lossy()
+        );
+
+        println!("Screenshot command: {}", pipeline_str);
+
+        let result = std::process::Command::new("gst-launch-1.0")
+            .args(&[
+                "playbin",
+                &format!("uri=file://{}", video_path),
+                "!",
+                "videoconvert",
+                "!",
+                "pngenc",
+                "!",
+                &format!("filesink location={}", save_path.to_string_lossy())
+            ])
+            .output();
+
+        match result {
+            Ok(output) => {
+                if output.status.success() {
+                    println!("Screenshot saved successfully to: {:?}", save_path);
+                } else {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    eprintln!("Screenshot failed: {}", stderr);
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to run gst-launch-1.0: {:?}", e);
+            }
+        }
+    }
+    fn ts_to_duration(t: &Timestamp) -> Duration {
     let (h, m, s, ms) = t.get();
     Duration::from_millis(
         (h as u64) * 3_600_000 + (m as u64) * 60_000 + (s as u64) * 1_000 + (ms as u64),
@@ -1439,11 +1459,11 @@ fn read_videos_safely(path: &Path) -> Vec<PathBuf> {
     }
 }
 
-// #[allow(dead_code)]
-// fn read_file(path: &Path) -> String {
-//     let mut f = File::open(path).expect("failed to open file");
-//     let mut s = String::new();
-//     f.read_to_string(&mut s)
-//         .expect("failed to read file as utf-8 text");
-//     s
-// }
+#[allow(dead_code)]
+fn read_file(path: &Path) -> String {
+    let mut f = File::open(path).expect("failed to open file");
+    let mut s = String::new();
+    f.read_to_string(&mut s)
+        .expect("failed to read file as utf-8 text");
+    s
+}
