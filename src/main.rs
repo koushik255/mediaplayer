@@ -1,5 +1,8 @@
 mod app;
 mod ui;
+mod app_types;
+mod database;
+mod subtitles;
 #[cfg(feature = "dhat-heap")]
 #[global_allocator]
 static ALLOC: dhat::Alloc = dhat::Alloc;

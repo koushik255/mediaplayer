@@ -2,13 +2,14 @@ use iced::Alignment;
 use iced::Font;
 use iced::Length;
 
-use iced::widget::{button, text_input, Button, Column, Container, Row, Slider, Stack, Text};
+use iced::widget::{button, Button, Column, Container, Row, Slider, Stack, Text};
 use iced::{Element, Padding};
 use iced_aw::style::colors::WHITE;
 use iced_aw::{selection_list::SelectionList, style::selection_list::primary};
 use iced_video_player::VideoPlayer;
 
-use crate::app::{App, Message};
+use crate::app::App;
+use crate::app_types::Message;
 
 impl App {
     pub fn view(&self) -> Element<'_, Message> {
@@ -280,18 +281,6 @@ impl App {
             .push(video_with_list)
             .push(
                 Container::new(
-                    text_input("Enter a number...", &self.value)
-                        .on_input(Message::ValueChanged)
-                        .on_submit(Message::SubmitPressed)
-                        .padding(5)
-                        .size(15),
-                )
-                .align_x(iced::Alignment::Center)
-                .align_y(iced::Alignment::Center)
-                .padding(iced::Padding::new(10.0)),
-            )
-            .push(
-                Container::new(
                     Slider::new(
                         0.0..=self.video.duration().as_secs_f64(),
                         self.position,
@@ -453,6 +442,24 @@ impl App {
                                     )
                                     .push(
                                         Text::new(format!("{:.0}px", self.video_height))
+                                            .color(WHITE),
+                                    ),
+                            )
+                            .push(
+                                Row::new()
+                                    .spacing(10)
+                                    .push(Text::new("Subtitle Offset (sec):").color(WHITE))
+                                    .push(
+                                        Slider::new(
+                                            -30.0..=30.0,
+                                            self.subtitle_offset,
+                                            Message::SubtitleOffsetChanged,
+                                        )
+                                        .step(0.1)
+                                        .width(280.0),
+                                    )
+                                    .push(
+                                        Text::new(format!("{:.1}s", self.subtitle_offset))
                                             .color(WHITE),
                                     ),
                             )

@@ -1,62 +1,15 @@
 use iced::Task;
 use iced_video_player::Video;
-use rusqlite::Connection;
-use rusqlite::Error;
-use rusqlite::Result;
-use rusqlite::params;
-use std::time::{Duration, SystemTime};
-
-use gstreamer::prelude::*;
-use gstreamer_app as gst_app;
-use url::Url;
-
-use ass_parser::{AssFile, Dialogue};
-use srtlib::{Subtitles, Timestamp};
-use std::fs::{File, read_dir};
-use std::io::Read;
+use std::time::Duration;
+use std::fs::read_dir;
 use std::path::{Path, PathBuf};
 
-#[derive(Clone, Debug)]
-pub enum Message {
-    TogglePause,
-    ToggleLoop,
-    Seek(f64),
-    SeekRelease,
-    EndOfStream,
-    NewFrame,
-    Open,
-    Opened(Result<url::Url, String>),
-    VolumeChanged(f64),
-    ToggleMute,
-    OpenSubtitle,
-    OpenedSubtitles(Result<std::path::PathBuf, String>),
-    Quit,
-    ValueChanged(String),
-    SubmitPressed,
-    OpenVidFolder,
-    OpenedFolder(Result<std::path::PathBuf, String>),
-    Next,
-    OpenSubFolder,
-    OpenedSubFolder(Result<std::path::PathBuf, String>),
-    OpenLast,
-    NewSub(Option<String>),
-    LanguageSelected(usize, String),
-    AddAtSelection,
-    ManualSelection,
-    OverlayPressed,
-    UsingOwnSubs,
-    AudioTrackSelected(usize),
-    SubtitleTrackSelected(usize),
-    SubtitleOffsetChanged(f64),
-    SubtitleOffsetVerticalChanged(f64),
-    SubtitleOffsetHorizontalChanged(f64),
-    VideoWidthChanged(f32),
-    VideoHeightChanged(f32),
-    ToggleSettings,
-    TakeScreenshotURI,
-    TakeScreenshotDirect,
-    ScreenshotSaved(std::path::PathBuf),
-}
+use crate::app_types::*;
+use crate::database::{db, db_get_last, save_settings, load_settings};
+use crate::subtitles::parse_example_subs;
+
+use gstreamer::prelude::*;
+use url::Url;
 
 pub struct App {
     pub video: Video,
@@ -72,8 +25,6 @@ pub struct App {
     pub video_url: PathBuf,
     pub subtitle_file: PathBuf,
     pub last_from_db: Dbchoose,
-    pub value: String,
-    pub parsed: Option<f64>,
 
     pub subtitle_folder: String,
     pub subtitle_folder_position: usize,
@@ -99,24 +50,6 @@ pub struct App {
     pub video_height: f32,
     pub settings_open: bool,
 }
-
-#[derive(Debug, Clone)]
-pub struct SubtitleEntry {
-    start: Duration,
-    end: Duration,
-    text: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct VideoEntry {
-    pub display_name: String,
-    pub full_path: PathBuf,
-}
-
-// todos
-// i really need to clean this code up because its so un enjoybale to work on TBH also the ui
-// should probably be re done but first i need to handle like all the pnaics and make it not so
-// many buttons
 
 impl Default for App {
     fn default() -> Self {
@@ -194,8 +127,6 @@ impl Default for App {
             prev_sub: None,
             video_url: path,
             last_from_db: lastdbdb,
-            parsed: Some(0.0),
-            value: "".to_string(),
             video_folder_better: def_vid_folder,
             subtitle_folder: "none".to_string(),
             subtitle_folder_position: 0,
@@ -227,18 +158,6 @@ impl Default for App {
         app
     }
 }
-#[derive(Debug)]
-pub struct VideoFolder {
-    folder: String,
-    position: usize,
-    current_video: PathBuf,
-}
-
-#[derive(Debug)]
-pub struct SortedFolder {
-    pub video: Vec<(usize, PathBuf)>,
-    pub subs: Vec<(usize, PathBuf)>,
-}
 
 impl App {
     pub fn new() -> (Self, Task<Message>) {
@@ -247,10 +166,6 @@ impl App {
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::OverlayPressed => {
-                println!("Overlay button pressed");
-                Task::none()
-            }
             Message::LanguageSelected(index, _language) => {
                 self.selected_index = index;
                 self.manual_select = None;
@@ -591,23 +506,6 @@ impl App {
 
                 iced::exit()
             }
-            Message::ValueChanged(val) => {
-                self.value = val.clone();
-
-                // try parse
-                self.parsed = val.parse::<f64>().ok();
-                Task::none()
-            }
-            Message::SubmitPressed => {
-                if let Some(number) = self.parsed {
-                    println!("user number : {number}");
-                } else {
-                    println!("user number no work");
-                }
-
-                Task::none()
-            }
-
             Message::Open => Task::perform(
                 async {
                     let handle = rfd::AsyncFileDialog::new()
@@ -1120,7 +1018,7 @@ impl App {
 
         let bus = pipeline.bus().ok_or("Failed to get bus from pipeline")?;
 
-        let timeout = gst::ClockTime::from_seconds(5);
+        let _timeout = gst::ClockTime::from_seconds(5);
         let mut eos_received = false;
         let start_time = std::time::Instant::now();
 
@@ -1157,266 +1055,6 @@ impl App {
     }
 }
 
-fn ts_to_duration(t: &Timestamp) -> Duration {
-    let (h, m, s, ms) = t.get();
-    Duration::from_millis(
-        (h as u64) * 3_600_000 + (m as u64) * 60_000 + (s as u64) * 1_000 + (ms as u64),
-    )
-}
-
-fn ass_time_to_duration(t: &str) -> Option<Duration> {
-    let mut parts = t.split(':');
-    let h = parts.next()?.parse::<u64>().ok()?;
-    let m = parts.next()?.parse::<u64>().ok()?;
-    let sec_cs = parts.next()?; // "SS.cs"
-
-    let mut sc = sec_cs.split('.');
-    let s = sc.next()?.parse::<u64>().ok()?;
-    let cs = sc.next()?.parse::<u64>().ok()?; // centiseconds (00–99)
-
-    let millis = h * 3_600_000 + m * 60_000 + s * 1_000 + cs * 10;
-    Some(Duration::from_millis(millis) + Duration::from_secs(2))
-}
-
-fn strip_ass_tags(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    let mut in_brace = false;
-    for c in s.chars() {
-        match c {
-            '{' => in_brace = true,
-            '}' => in_brace = false,
-            _ if !in_brace => out.push(c),
-            _ => {}
-        }
-    }
-    out.replace("\\N", "\n").trim().to_string()
-}
-
-fn parse_example_subs(file: &str) -> Result<Vec<SubtitleEntry>, String> {
-    let mut entries: Vec<SubtitleEntry> = Vec::new();
-    println!("Before file parse from file");
-    //let file = file.as_str();
-
-    if let Ok(subs) = Subtitles::parse_from_file(file, None) {
-        let mut v = subs.to_vec();
-        v.sort();
-        for s in v {
-            entries.push(SubtitleEntry {
-                start: ts_to_duration(&s.start_time),
-                end: ts_to_duration(&s.end_time),
-                text: s.text.trim().to_string(),
-            });
-        }
-    }
-
-    if let Ok(ass_file) = AssFile::from_file(file) {
-        let dialogues: Vec<Dialogue> = ass_file.events.get_dialogues();
-        for d in dialogues {
-            if let (Some(b), Some(e), Some(txt)) = (d.get_start(), d.get_end(), d.get_text()) {
-                println!("before duration ass parse");
-                println!("{}", file);
-                let (start, end) = (
-                    ass_time_to_duration(&b).unwrap(),
-                    ass_time_to_duration(&e).unwrap(),
-                );
-                {
-                    let clean = strip_ass_tags(&txt);
-                    println!("subtitles before push {:?}", &txt.clone());
-                    entries.push(SubtitleEntry {
-                        start,
-                        end,
-                        text: clean,
-                    });
-                }
-            }
-        }
-    }
-
-    entries.sort_by_key(|e| e.start);
-
-    println!("LOADED SUBTITLE FILE");
-    Ok(entries)
-}
-
-#[derive(Debug, Clone)]
-pub struct Dbchoose {
-    time: f64,
-    vid_file: String,
-    subfile: String,
-}
-fn db(time: f64, vid_file: String, subfile: String) {
-    let conn = Connection::open("mydb.sqlite3").expect("error connecting to db");
-    println!(
-        "DB: params which are being inserted {} {} {}",
-        time, vid_file, subfile
-    );
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS last (
-                    time  REAL,
-                    file  TEXT NOT NULL,
-                    subfile  TEXT NOT NULL
-)",
-        [],
-    )
-    .expect("erroring creating db table");
-    conn.execute("DELETE from last", [])
-        .expect("Error deleting lsat table");
-
-    conn.execute(
-        "INSERT INTO last (time,file,subfile) VALUES (?1,?2,?3)",
-        params![time, vid_file, subfile],
-    )
-    .expect("erroing inserting last");
-
-    println!("succesfully added last to db");
-}
-
-fn save_settings(
-    subtitle_offset: f64,
-    subtitle_offset_vertical: f64,
-    subtitle_offset_horizontal: f64,
-    video_width: f32,
-    video_height: f32,
-    volume: f64,
-) {
-    let conn = Connection::open("mydb.sqlite3").expect("error connecting to db");
-    println!("Saving settings to db");
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS settings (
-                    subtitle_offset REAL,
-                    subtitle_offset_vertical REAL,
-                    subtitle_offset_horizontal REAL,
-                    video_width REAL,
-                    video_height REAL,
-                    volume REAL
-)",
-        [],
-    )
-    .expect("error creating settings table");
-    conn.execute("DELETE from settings", [])
-        .expect("Error deleting settings table");
-
-    conn.execute(
-        "INSERT INTO settings (subtitle_offset, subtitle_offset_vertical, subtitle_offset_horizontal, video_width, video_height, volume) VALUES (?1,?2,?3,?4,?5,?6)",
-        params![
-            subtitle_offset,
-            subtitle_offset_vertical,
-            subtitle_offset_horizontal,
-            video_width,
-            video_height,
-            volume
-        ],
-    )
-    .expect("error inserting settings");
-
-    println!("successfully saved settings");
-}
-
-fn load_settings() -> Result<(f64, f64, f64, f32, f32, f64), String> {
-    let conn =
-        Connection::open("mydb.sqlite3").map_err(|e| format!("Error connecting to db: {}", e))?;
-
-    let mut stmt = conn
-        .prepare("SELECT subtitle_offset, subtitle_offset_vertical, subtitle_offset_horizontal, video_width, video_height, volume FROM settings")
-        .map_err(|e| format!("Statement error {}", e))?;
-
-    match stmt.query_row([], |row| {
-        Ok((
-            row.get(0)?,
-            row.get(1)?,
-            row.get(2)?,
-            row.get(3)?,
-            row.get(4)?,
-            row.get(5)?,
-        ))
-    }) {
-        Ok(settings) => {
-            println!("Loaded settings: {:?}", settings);
-            Ok(settings)
-        }
-        Err(Error::QueryReturnedNoRows) => {
-            println!("No settings found, using defaults");
-            Err("No settings found".to_string())
-        }
-        Err(e) => Err(format!("Database error {}", e)),
-    }
-}
-
-fn db_for_each(time: f64, vid_file: String, subfile: String) {
-    let conn = Connection::open("allvids.sqlite3").expect("Error connecting to db");
-    println!("db for each now");
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS all (
-                    time REAL,
-                    file TEXT NOT NULL UNIQUE,
-                    subfile TEXT NOT NULL UNIQUE
-)",
-        [],
-    )
-    .expect("error creaing db table");
-
-    conn.execute(
-        "INSERT INTO all(time,file,subfile) VALUES(?1,?2,?3)",
-        params![time, vid_file, subfile],
-    )
-    .expect("Erroring inserting last");
-
-    println!("after inserting to everything")
-}
-
-fn db_get_all() -> Result<Vec<Dbchoose>> {
-    let conn = Connection::open("allvids.sqlite3").expect("errpr connecting ot db");
-    println!("db get all");
-
-    let mut stmt = conn
-        .prepare("SELECT time,file,subfile FROM all")
-        .expect("error selcting db all");
-
-    let all = stmt
-        .query_map([], |row| {
-            Ok(Dbchoose {
-                time: row.get(0).expect("error time db all"),
-                vid_file: row.get(1).expect("error file db all"),
-                subfile: row.get(2).expect("errrpr sub db"),
-            })
-        })
-        .expect("error getting query ")
-        .collect::<Result<Vec<_>, _>>()
-        .expect("error collect");
-    Ok(all)
-}
-// see now its for my design choice do i want to
-
-fn db_get_last() -> Result<Dbchoose, String> {
-    let conn =
-        Connection::open("mydb.sqlite3").map_err(|e| format!("Erorr connecting to db: {}", e))?;
-
-    let mut stmt = conn
-        .prepare("SELECT time,file,subfile FROM last")
-        .map_err(|e| format!("Statement error {}", e))?;
-
-    match stmt.query_row([], |row| {
-        Ok(Dbchoose {
-            time: row.get(0)?,
-            vid_file: row.get(1)?,
-            subfile: row.get(2)?,
-        })
-    }) {
-        Ok(last) => {
-            println!("{:?}", last);
-            Ok(last)
-        }
-        Err(Error::QueryReturnedNoRows) => {
-            println!("Could not find last");
-            Err("Could not find last".to_string())
-        }
-        Err(e) => Err(format!("Database error {}", e)),
-    }
-}
-
 fn read_videos_safely(path: &Path) -> Vec<PathBuf> {
     let entries = match read_dir(path) {
         Ok(entries) => entries,
@@ -1438,12 +1076,3 @@ fn read_videos_safely(path: &Path) -> Vec<PathBuf> {
         }
     }
 }
-
-// #[allow(dead_code)]
-// fn read_file(path: &Path) -> String {
-//     let mut f = File::open(path).expect("failed to open file");
-//     let mut s = String::new();
-//     f.read_to_string(&mut s)
-//         .expect("failed to read file as utf-8 text");
-//     s
-// }
