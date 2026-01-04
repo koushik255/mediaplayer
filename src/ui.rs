@@ -2,7 +2,7 @@ use iced::Alignment;
 use iced::Font;
 use iced::Length;
 
-use iced::widget::{Button, Column, Container, Row, Slider, Stack, Text, button, text_input};
+use iced::widget::{button, text_input, Button, Column, Container, Row, Slider, Stack, Text};
 use iced::{Element, Padding};
 use iced_aw::style::colors::WHITE;
 use iced_aw::{selection_list::SelectionList, style::selection_list::primary};
@@ -167,79 +167,106 @@ impl App {
                 )
                 .push(
                     Container::new(
-                        Row::new()
-                            .spacing(5)
-                            .push(button("Open").width(120.0).on_press(Message::Open))
-                            .push(
-                                button("Open Video Folder")
-                                    .width(140.0)
-                                    .on_press(Message::OpenVidFolder),
-                            )
-                            .push(
-                                button("Open Subtitle File")
-                                    .width(150.0)
-                                    .on_press(Message::OpenSubtitle),
-                            )
-                            .push(
-                                button("Open Subtitle Folder")
-                                    .width(160.0)
-                                    .on_press(Message::OpenSubFolder),
-                            )
-                            .push(
-                                button("Screenshot (URI)")
-                                    .width(140.0)
-                                    .on_press(Message::TakeScreenshotURI),
-                            )
-                            .push(
-                                button("Screenshot (Direct)")
-                                    .width(140.0)
-                                    .on_press(Message::TakeScreenshotDirect),
-                            )
-                            .push(button("Quit").width(120.0).on_press(Message::Quit)),
-                    )
-                    .padding(10)
-                    .style(|_theme| iced::widget::container::Style {
-                        background: Some(iced::Background::Color(iced::Color::from_rgb(
-                            0.05, 0.05, 0.05,
-                        ))),
-                        border: iced::border::Border {
-                            color: iced::Color::from_rgb(0.2, 0.2, 0.2),
-                            width: 1.0,
-                            radius: 8.0.into(),
-                        },
-                        shadow: iced::Shadow::default(),
-                        text_color: None,
-                    }),
-                )
-                .push(
-                    Container::new(
                         Column::new()
-                            .spacing(8)
+                            .spacing(10)
                             .push(
-                                Button::new(Text::new(if self.muted { "Mute" } else { "Unmute" }))
-                                    .width(150.0)
-                                    .on_press(Message::ToggleMute),
+                                Container::new(
+                                    Row::new()
+                                        .spacing(8)
+                                        .push(
+                                            Button::new(Text::new(if self.muted {
+                                                "Mute"
+                                            } else {
+                                                "Unmute"
+                                            }))
+                                            .width(150.0)
+                                            .on_press(Message::ToggleMute),
+                                        )
+                                        .push(
+                                            button("Own Subs")
+                                                .width(150.0)
+                                                .on_press(Message::UsingOwnSubs),
+                                        )
+                                        .push(
+                                            button("Add At Selection")
+                                                .width(150.0)
+                                                .on_press(Message::AddAtSelection),
+                                        )
+                                        .push(self.audio_track_button())
+                                        .push(self.subtitle_track_button()),
+                                )
+                                .padding(10)
+                                .style(|_theme| {
+                                    iced::widget::container::Style {
+                                        background: Some(iced::Background::Color(
+                                            iced::Color::from_rgb(0.05, 0.05, 0.05),
+                                        )),
+                                        border: iced::border::Border {
+                                            color: iced::Color::from_rgb(0.2, 0.2, 0.2),
+                                            width: 1.0,
+                                            radius: 8.0.into(),
+                                        },
+                                        shadow: iced::Shadow::default(),
+                                        text_color: None,
+                                    }
+                                }),
                             )
                             .push(
-                                button("Own Subs")
-                                    .width(150.0)
-                                    .on_press(Message::UsingOwnSubs),
-                            )
-                            .push(
-                                button("Add At Selection")
-                                    .width(150.0)
-                                    .on_press(Message::AddAtSelection),
-                            )
-                            .push(self.audio_track_button())
-                            .push(self.subtitle_track_button()),
+                                Container::new(
+                                    Row::new()
+                                        .spacing(5)
+                                        .push(button("Open").width(120.0).on_press(Message::Open))
+                                        .push(
+                                            button("Open Video Folder")
+                                                .width(140.0)
+                                                .on_press(Message::OpenVidFolder),
+                                        )
+                                        .push(
+                                            button("Open Subtitle File")
+                                                .width(150.0)
+                                                .on_press(Message::OpenSubtitle),
+                                        )
+                                        .push(
+                                            button("Open Subtitle Folder")
+                                                .width(160.0)
+                                                .on_press(Message::OpenSubFolder),
+                                        )
+                                        .push(
+                                            button("Screenshot (URI)")
+                                                .width(140.0)
+                                                .on_press(Message::TakeScreenshotURI),
+                                        )
+                                        .push(
+                                            button("Screenshot (Direct)")
+                                                .width(140.0)
+                                                .on_press(Message::TakeScreenshotDirect),
+                                        )
+                                        .push(button("Quit").width(120.0).on_press(Message::Quit)),
+                                )
+                                .padding(10)
+                                .style(|_theme| {
+                                    iced::widget::container::Style {
+                                        background: Some(iced::Background::Color(
+                                            iced::Color::from_rgb(0.05, 0.05, 0.05),
+                                        )),
+                                        border: iced::border::Border {
+                                            color: iced::Color::from_rgb(0.2, 0.2, 0.2),
+                                            width: 1.0,
+                                            radius: 8.0.into(),
+                                        },
+                                        shadow: iced::Shadow::default(),
+                                        text_color: None,
+                                    }
+                                }),
+                            ),
                     )
                     .padding(10)
                     .style(|_theme| iced::widget::container::Style {
                         background: Some(iced::Background::Color(iced::Color::from_rgb(
-                            0.05, 0.05, 0.05,
+                            0.02, 0.02, 0.02,
                         ))),
                         border: iced::border::Border {
-                            color: iced::Color::from_rgb(0.2, 0.2, 0.2),
+                            color: iced::Color::from_rgb(0.15, 0.15, 0.15),
                             width: 1.0,
                             radius: 8.0.into(),
                         },

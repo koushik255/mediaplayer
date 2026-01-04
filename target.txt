@@ -2,3 +2,12 @@
 - be able to control the subtitles / fix the renderer for customs (should just be able to extract the embedded subs tbh)
 have the videos on the side of the screen and have it be somewhat of a dropdown menu where you can select which episode you want to watch
 - i would need to remake it all tbh for it to work onto ffmpeg instaed
+
+___
+TODO
+Move stuff into different files instead of everything just being inside the app.rs becayse its kinda unorginized atleast to me it is just
+a little bit
+try zed??
+make the button normal because their are fucked rn
+trouble shoot everything to do with the screenshots because they are not 100% tbh right now and
+maybe just move alot of stuff to teh settings menu
