@@ -16,10 +16,15 @@ a little bit
 it just takes up the whole middle of the screen kinda and just lists what ffprobe would say about the video/the gstreamer equivilent
 -DONE--- put a little thing above play button which shows you the current video playing
 
+--- add skip intro
+
+
 --i also want to implement my file viewer thing, like instead of when you open a folder it
 it would be transparent and it would just be over the screen it would be good
 -- do i need to do allat? well i could and then i could also just use it as a "frontend" like a panel and the customization would be good
 how would i interact with it tho just via terminal? because if i did this i would everything to be apart of this settings thing
+--if i wanted to control the player from an external resource how would i do so? or how would i make it possible?
+
 --want to make it so that the subtitles are line 100% correct always, but how would i implement a system for that?
 
 
