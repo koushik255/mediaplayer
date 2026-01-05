@@ -1,13 +1,25 @@
--be able to control the streams of the video (ffmpeg)
-- be able to control the subtitles / fix the renderer for customs (should just be able to extract the embedded subs tbh)
-have the videos on the side of the screen and have it be somewhat of a dropdown menu where you can select which episode you want to watch
-- i would need to remake it all tbh for it to work onto ffmpeg instaed
-
-___
-TODO
-Move stuff into different files instead of everything just being inside the app.rs becayse its kinda unorginized atleast to me it is just
+---DONE-be able to control the streams of the video (ffmpeg)
+-DONE--- be able to control the subtitles / fix the renderer for customs (should just be able to extract the embedded subs tbh)
+--DONE-- have the videos on the side of the screen and have it be somewhat of a dropdown menu where you can select which episode you want to watch
+-NOPE- i would need to remake it all tbh for it to work onto ffmpeg instaed
+-DONE--Move stuff into different files instead of everything just being inside the app.rs becayse its kinda unorginized atleast to me it is just
 a little bit
-try zed??
-make the button normal because their are fucked rn
-trouble shoot everything to do with the screenshots because they are not 100% tbh right now and
-maybe just move alot of stuff to teh settings menu
+--DONE---try zed??
+--DONE--make the button normal because their are fucked rn
+--DONE--trouble shoot everything to do with the screenshots because they are not 100% tbh right now and
+--DONE--maybe just move alot of stuff to teh settings menu
+
+
+--TODO---
+implement the "screenshot taken thing"
+-- implement a clipping system?
+the clipping system would just create a new gstreamer pipeline then take the time you started at then just clip that
+-- somehow track the time of videos you watched?
+-- that could probably be via database like it could just hold the time of each video that you exit
+--add keybinds---
+
+
+
+-- maybe should try to make a video editor?--
+-- floating file manager would also be a good shout tbh
+--how do i know what code it just put in?

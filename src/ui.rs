@@ -3,7 +3,7 @@ use iced::Font;
 use iced::Length;
 use std::path::{Path, PathBuf};
 
-use iced::widget::{button, Button, Column, Container, Row, Slider, Stack, Text};
+use iced::widget::{Button, Column, Container, Row, Slider, Stack, Text, button};
 use iced::{Element, Padding};
 use iced_aw::style::colors::WHITE;
 use iced_aw::{selection_list::SelectionList, style::selection_list::primary};
@@ -16,9 +16,18 @@ impl App {
     pub fn view(&self) -> Element<'_, Message> {
         let main_content = self.main_view();
 
+        let notification_container = Container::new(self.notification_area())
+            .align_x(iced::Alignment::End)
+            .align_y(iced::Alignment::End)
+            .width(Length::Fill)
+            .height(Length::Fill);
+
+        let content_with_notifications =
+            Stack::new().push(main_content).push(notification_container);
+
         if self.settings_open {
             Container::new(
-                Stack::new().push(main_content).push(
+                Stack::new().push(content_with_notifications).push(
                     Container::new(self.settings_window())
                         .align_x(iced::Alignment::Center)
                         .align_y(iced::Alignment::Center),
@@ -26,8 +35,31 @@ impl App {
             )
             .into()
         } else {
-            main_content
+            Container::new(content_with_notifications).into()
         }
+    }
+
+    fn notification_area(&self) -> Element<'_, Message> {
+        if self.notifications.is_empty() {
+            return Container::new(Text::new("")).into();
+        }
+
+        let notification_text = &self.notifications[0].message;
+        Container::new(Text::new(notification_text).size(16).color(WHITE))
+            .padding(10)
+            .style(|_theme| iced::widget::container::Style {
+                background: Some(iced::Background::Color(iced::Color::from_rgba(
+                    0.0, 0.0, 0.0, 0.8,
+                ))),
+                border: iced::border::Border {
+                    color: iced::Color::from_rgba(1.0, 1.0, 1.0, 0.3),
+                    width: 1.0,
+                    radius: 8.0.into(),
+                },
+                shadow: iced::Shadow::default(),
+                text_color: None,
+            })
+            .into()
     }
 
     fn main_view(&self) -> Element<'_, Message> {

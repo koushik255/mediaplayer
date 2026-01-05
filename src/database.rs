@@ -1,5 +1,5 @@
 use super::app_types::Dbchoose;
-use rusqlite::{params, Connection, Error, Result as SqliteResult};
+use rusqlite::{Connection, Error, Result as SqliteResult, params};
 
 pub fn db(time: f64, vid_file: String, subfile: String) {
     let conn = Connection::open("mydb.sqlite3").expect("error connecting to db");

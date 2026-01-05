@@ -40,6 +40,8 @@ pub enum Message {
     SetDefaultVideo(Result<std::path::PathBuf, String>),
     OpenScreenshotFolderPicker,
     SetScreenshotFolder(Result<std::path::PathBuf, String>),
+    ShowNotification(String),
+    DismissNotification,
 }
 
 #[derive(Debug, Clone)]
@@ -73,4 +75,9 @@ pub struct Dbchoose {
     pub time: f64,
     pub vid_file: String,
     pub subfile: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct Notification {
+    pub message: String,
 }

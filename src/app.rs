@@ -52,6 +52,7 @@ pub struct App {
     pub settings_open: bool,
     pub default_video_path: Option<String>,
     pub screenshot_folder: Option<String>,
+    pub notifications: Vec<Notification>,
 }
 
 impl Default for App {
@@ -176,6 +177,7 @@ impl Default for App {
             settings_open: false,
             default_video_path: app_config.default_video_path,
             screenshot_folder: app_config.screenshot_folder,
+            notifications: Vec::new(),
         };
 
         app.detect_audio_tracks();
@@ -486,9 +488,7 @@ impl App {
                     println!("{}", self.is_built_in_subs);
                     self.update_active_subtitle();
                 }
-                // yeah i need to make it so that subtitles and subttiles with mkv is different
-                // accpet type
-                //println!("{}, {:?}", self.position.clone(), self.video_url.clone());
+
                 Task::none()
             }
             Message::VolumeChanged(vol) => {
@@ -839,7 +839,7 @@ impl App {
                     let filename = format!("screenshot_{}.png", filename);
                     let save_path = PathBuf::from(folder).join(&filename);
                     self.capture_and_save_screenshot(&save_path);
-                    Task::none()
+                    Task::done(Message::ShowNotification("Screenshot taken".to_string()))
                 } else {
                     Task::perform(
                         async move {
@@ -862,8 +862,10 @@ impl App {
             Message::ScreenshotSaved(path) => {
                 if !path.as_os_str().is_empty() {
                     self.capture_and_save_screenshot(&path);
+                    Task::done(Message::ShowNotification("Screenshot taken".to_string()))
+                } else {
+                    Task::none()
                 }
-                Task::none()
             }
             Message::SubtitleTrackSelected(track_index) => {
                 self.current_subtitle_track = track_index;
@@ -953,6 +955,29 @@ impl App {
 
                 Task::none()
             }
+            Message::ShowNotification(message) => {
+                println!("Creating notification: {}", message);
+                self.notifications.push(Notification { message });
+                println!("Total notifications: {}", self.notifications.len());
+                println!("before sleep notification");
+
+                Task::perform(
+                    async move {
+                        std::thread::sleep(Duration::from_secs(2));
+                    },
+                    |_| Message::DismissNotification,
+                )
+            }
+            Message::DismissNotification => {
+                if !self.notifications.is_empty() {
+                    println!(
+                        "Removing notification, remaining: {}",
+                        self.notifications.len() - 1
+                    );
+                    self.notifications.remove(0);
+                }
+                Task::none()
+            }
         }
     }
     fn detect_audio_tracks(&mut self) {
@@ -1032,7 +1057,7 @@ impl App {
             eprintln!("Failed to capture screenshot: {}", e);
         }
     }
-
+    // holy function breh
     fn capture_screenshot_with_gstreamer(&mut self, save_path: &PathBuf) -> Result<(), String> {
         use gstreamer as gst;
 
