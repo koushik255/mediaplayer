@@ -118,7 +118,8 @@ impl App {
                 .on_subtitle_text(Message::NewSub),
         )
         .width(iced::Length::Fixed(self.video_width))
-        .height(iced::Length::Fixed(self.video_height));
+        .height(iced::Length::Fixed(self.video_height))
+        .padding(iced::Padding::new(0.0).top(50.0));
 
         let subtitle_text = Container::new(
             Text::new(heresubdudebud).size(35).color(WHITE), // the subtitle
@@ -139,7 +140,7 @@ impl App {
 
         let subtitle_layer = Container::new(subtitle_text)
             .width(iced::Length::Fixed(self.video_width))
-            .height(iced::Length::Fixed(self.video_height))
+            .height(iced::Length::Fixed(self.video_height + 50.0))
             .align_x(iced::Alignment::Center)
             .align_y(iced::Alignment::End)
             .padding(
@@ -150,11 +151,10 @@ impl App {
 
         let title_layer = Container::new(title_text)
             .width(iced::Length::Fixed(self.video_width))
-            .height(iced::Length::Fixed(self.video_height))
-            .align_x(iced::Alignment::Start)
+            .height(iced::Length::Fixed(self.video_height + 50.0))
+            .align_x(iced::Alignment::End)
             .align_y(iced::Alignment::Start)
-            // Should i make the video title just always go to the top left of the resolutoin??
-            .padding(iced::Padding::new(5.0).left(1080.0).top(5.0));
+            .padding(iced::Padding::new(5.0));
 
         let overlay_stack = Stack::new()
             .push(video_layer)

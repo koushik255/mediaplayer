@@ -14,7 +14,21 @@ a little bit
 ---DONE---implement the "screenshot taken thing"
 --DONE--i want like a video info button, where it would kinda pause the video and kinda like how the settings button is like semi transparent but this time
 it just takes up the whole middle of the screen kinda and just lists what ffprobe would say about the video/the gstreamer equivilent
--- put a little thing above play button which shows you the current video playing
+-DONE--- put a little thing above play button which shows you the current video playing
+
+--i also want to implement my file viewer thing, like instead of when you open a folder it
+it would be transparent and it would just be over the screen it would be good
+-- do i need to do allat? well i could and then i could also just use it as a "frontend" like a panel and the customization would be good
+how would i interact with it tho just via terminal? because if i did this i would everything to be apart of this settings thing
+--want to make it so that the subtitles are line 100% correct always, but how would i implement a system for that?
+
+
+
+
+
+
+
+
 
 -- implement a clipping system?
 the clipping system would just create a new gstreamer pipeline then take the time you started at then just clip that
