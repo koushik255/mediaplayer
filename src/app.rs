@@ -12,6 +12,26 @@ use crate::subtitles::parse_example_subs;
 use gstreamer::prelude::*;
 use url::Url;
 
+fn run_gst_discoverer(video_path: &PathBuf) -> String {
+    use std::process::Command;
+
+    let output = Command::new("gst-discoverer-1.0").arg(video_path).output();
+
+    match output {
+        Ok(output) => {
+            if output.status.success() {
+                String::from_utf8_lossy(&output.stdout).to_string()
+            } else {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                format!("gst-discoverer-1.0 failed:\n{}", stderr)
+            }
+        }
+        Err(e) => {
+            format!("Failed to execute gst-discoverer-1.0: {}", e)
+        }
+    }
+}
+
 pub struct App {
     pub video: Video,
     pub position: f64,
@@ -50,6 +70,8 @@ pub struct App {
     pub video_width: f32,
     pub video_height: f32,
     pub settings_open: bool,
+    pub video_info_open: bool,
+    pub video_info_text: Option<String>,
     pub default_video_path: Option<String>,
     pub screenshot_folder: Option<String>,
     pub notifications: Vec<Notification>,
@@ -175,6 +197,8 @@ impl Default for App {
             video_width,
             video_height,
             settings_open: false,
+            video_info_open: false,
+            video_info_text: None,
             default_video_path: app_config.default_video_path,
             screenshot_folder: app_config.screenshot_folder,
             notifications: Vec::new(),
@@ -819,6 +843,30 @@ impl App {
                 self.settings_open = !self.settings_open;
                 Task::none()
             }
+            Message::ToggleVideoInfo => {
+                if self.video_info_open {
+                    self.video_info_open = false;
+                    self.video_info_text = None;
+                } else {
+                    self.video_info_open = true;
+                    self.video.set_paused(true);
+
+                    let video_path = self.video_url.clone();
+                    return Task::perform(
+                        async move {
+                            std::thread::spawn(move || run_gst_discoverer(&video_path))
+                                .join()
+                                .unwrap_or_else(|_| "Failed to run gst-discoverer-1.0".to_string())
+                        },
+                        Message::VideoInfoExtracted,
+                    );
+                }
+                Task::none()
+            }
+            Message::VideoInfoExtracted(output) => {
+                self.video_info_text = Some(output);
+                Task::none()
+            }
             Message::TakeScreenshotURI => {
                 let filename = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
@@ -959,10 +1007,11 @@ impl App {
                 println!("Creating notification: {}", message);
                 self.notifications.push(Notification { message });
                 println!("Total notifications: {}", self.notifications.len());
-                println!("before sleep notification");
+                // println!("before sleep notification");
 
                 Task::perform(
                     async move {
+                        println!("Sleeping for 2 sec because of screenshot!");
                         std::thread::sleep(Duration::from_secs(2));
                     },
                     |_| Message::DismissNotification,

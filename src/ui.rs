@@ -3,7 +3,7 @@ use iced::Font;
 use iced::Length;
 use std::path::{Path, PathBuf};
 
-use iced::widget::{Button, Column, Container, Row, Slider, Stack, Text, button};
+use iced::widget::{Button, Column, Container, Row, Scrollable, Slider, Stack, Text, button};
 use iced::{Element, Padding};
 use iced_aw::style::colors::WHITE;
 use iced_aw::{selection_list::SelectionList, style::selection_list::primary};
@@ -29,6 +29,15 @@ impl App {
             Container::new(
                 Stack::new().push(content_with_notifications).push(
                     Container::new(self.settings_window())
+                        .align_x(iced::Alignment::Center)
+                        .align_y(iced::Alignment::Center),
+                ),
+            )
+            .into()
+        } else if self.video_info_open {
+            Container::new(
+                Stack::new().push(content_with_notifications).push(
+                    Container::new(self.video_info_window())
                         .align_x(iced::Alignment::Center)
                         .align_y(iced::Alignment::Center),
                 ),
@@ -172,6 +181,11 @@ impl App {
                                 Button::new(Text::new("Settings"))
                                     .width(120.0)
                                     .on_press(Message::ToggleSettings),
+                            )
+                            .push(
+                                Button::new(Text::new("Video Info"))
+                                    .width(120.0)
+                                    .on_press(Message::ToggleVideoInfo),
                             )
                             .push(
                                 Text::new(format!(
@@ -612,6 +626,82 @@ impl App {
             text_color: None,
         })
         .width(550)
+        .into()
+    }
+
+    fn video_info_window(&self) -> Element<'_, Message> {
+        let info_text = self
+            .video_info_text
+            .as_ref()
+            .map(|s| s.as_str())
+            .unwrap_or("Running gst-discoverer-1.0...");
+
+        Container::new(
+            Column::new()
+                .spacing(15)
+                .padding(20)
+                .push(
+                    Row::new()
+                        .spacing(10)
+                        .align_y(iced::Alignment::Center)
+                        .push(Text::new("Video Info").size(24).color(WHITE))
+                        .push(Row::new().width(iced::Length::Fill))
+                        .push(
+                            Button::new(Text::new("✕"))
+                                .on_press(Message::ToggleVideoInfo)
+                                .width(40.0),
+                        ),
+                )
+                .push(
+                    Container::new(
+                        Scrollable::new(Text::new(info_text).size(13).color(WHITE).font(
+                            iced::Font {
+                                family: iced::font::Family::Monospace,
+                                ..Default::default()
+                            },
+                        ))
+                        .height(500)
+                        .width(700)
+                        .direction(
+                            iced::widget::scrollable::Direction::Vertical(
+                                iced::widget::scrollable::Scrollbar::new(),
+                            ),
+                        ),
+                    )
+                    .padding(15)
+                    .style(|_theme| iced::widget::container::Style {
+                        background: Some(iced::Background::Color(iced::Color::from_rgb(
+                            0.1, 0.1, 0.1,
+                        ))),
+                        border: iced::border::Border {
+                            color: iced::Color::from_rgb(0.3, 0.3, 0.3),
+                            width: 2.0,
+                            radius: 8.0.into(),
+                        },
+                        shadow: iced::Shadow::default(),
+                        text_color: None,
+                    }),
+                ),
+        )
+        .width(800)
+        .height(iced::Length::Shrink)
+        .style(|_theme| iced::widget::container::Style {
+            background: Some(iced::Background::Color(iced::Color::from_rgba(
+                0.0, 0.0, 0.0, 0.95,
+            ))),
+            border: iced::border::Border {
+                color: iced::Color::from_rgb(0.4, 0.4, 0.4),
+                width: 2.0,
+                radius: 12.0.into(),
+            },
+            shadow: iced::Shadow {
+                color: iced::Color::BLACK,
+                offset: iced::Vector::new(8.0, 8.0),
+                blur_radius: 25.0,
+            },
+            text_color: None,
+        })
+        .width(750)
         .into()
     }
 }

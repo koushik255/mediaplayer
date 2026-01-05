@@ -34,6 +34,8 @@ pub enum Message {
     VideoWidthChanged(f32),
     VideoHeightChanged(f32),
     ToggleSettings,
+    ToggleVideoInfo,
+    VideoInfoExtracted(String),
     TakeScreenshotURI,
     ScreenshotSaved(std::path::PathBuf),
     OpenDefaultVideoPicker,
