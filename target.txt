@@ -12,9 +12,9 @@ a little bit
 
 --TODO---
 ---DONE---implement the "screenshot taken thing"
---i want like a video info button, where it would kinda pause the video and kinda like how the settings button is like semi transparent but this time
+--DONE--i want like a video info button, where it would kinda pause the video and kinda like how the settings button is like semi transparent but this time
 it just takes up the whole middle of the screen kinda and just lists what ffprobe would say about the video/the gstreamer equivilent
-
+-- put a little thing above play button which shows you the current video playing
 
 -- implement a clipping system?
 the clipping system would just create a new gstreamer pipeline then take the time you started at then just clip that

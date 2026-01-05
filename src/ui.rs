@@ -72,7 +72,7 @@ impl App {
     }
 
     fn main_view(&self) -> Element<'_, Message> {
-        let _filename_text = match self.video_url.file_name() {
+        let filename_text = match self.video_url.file_name() {
             Some(name) => name.to_string_lossy().into_owned(),
             None => {
                 eprintln!(
@@ -95,6 +95,21 @@ impl App {
             heresubdudebud = text.replace("&apos;", "'").replace("&quot;", "\"");
             // println!("{heresubdudebud}");
         }
+
+        let title_text = Container::new(Text::new(filename_text).size(18).color(WHITE))
+            .padding(8)
+            .style(|_theme| iced::widget::container::Style {
+                background: Some(iced::Background::Color(iced::Color::from_rgba(
+                    0.0, 0.0, 0.0, 0.8,
+                ))),
+                border: iced::border::Border {
+                    color: iced::Color::TRANSPARENT,
+                    width: 0.0,
+                    radius: 5.0.into(),
+                },
+                shadow: iced::Shadow::default(),
+                text_color: Some(WHITE),
+            });
 
         let video_layer = Container::new(
             VideoPlayer::new(&self.video)
@@ -133,7 +148,18 @@ impl App {
                     .left(self.subtitle_offset_horizontal as f32),
             );
 
-        let overlay_stack = Stack::new().push(video_layer).push(subtitle_layer);
+        let title_layer = Container::new(title_text)
+            .width(iced::Length::Fixed(self.video_width))
+            .height(iced::Length::Fixed(self.video_height))
+            .align_x(iced::Alignment::Start)
+            .align_y(iced::Alignment::Start)
+            // Should i make the video title just always go to the top left of the resolutoin??
+            .padding(iced::Padding::new(5.0).left(1080.0).top(5.0));
+
+        let overlay_stack = Stack::new()
+            .push(video_layer)
+            .push(title_layer)
+            .push(subtitle_layer);
 
         let video_with_list = Row::new()
             .push(
