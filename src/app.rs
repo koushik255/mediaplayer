@@ -1,12 +1,12 @@
 use iced::Task;
 use iced_video_player::Video;
-use std::time::Duration;
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use crate::app_types::*;
-use crate::config::{load_config, save_config, AppConfig};
-use crate::database::{db, db_get_last, save_settings, load_settings};
+use crate::config::{AppConfig, load_config, save_config};
+use crate::database::{db, db_get_last, load_settings, save_settings};
 use crate::subtitles::parse_example_subs;
 
 use gstreamer::prelude::*;
@@ -1074,7 +1074,14 @@ impl App {
 
         let pipeline = gst::Pipeline::new();
         pipeline
-            .add_many(&[&filesrc, &decodebin, &videoconvert, &videoscale, &pngenc, &filesink])
+            .add_many(&[
+                &filesrc,
+                &decodebin,
+                &videoconvert,
+                &videoscale,
+                &pngenc,
+                &filesink,
+            ])
             .map_err(|e| format!("Failed to add elements to pipeline: {}", e))?;
 
         filesrc
@@ -1082,21 +1089,20 @@ impl App {
             .map_err(|e| format!("Failed to link filesrc to decodebin: {}", e))?;
 
         let videoconvert_weak = videoconvert.downgrade();
-        decodebin
-            .connect_pad_added(move |_, src_pad| {
-                let videoconvert = match videoconvert_weak.upgrade() {
-                    Some(vc) => vc,
-                    None => return,
-                };
+        decodebin.connect_pad_added(move |_, src_pad| {
+            let videoconvert = match videoconvert_weak.upgrade() {
+                Some(vc) => vc,
+                None => return,
+            };
 
-                if let Some(sink_pad) = videoconvert.static_pad("sink") {
-                    if src_pad.current_caps().map_or(false, |caps| {
-                        caps.iter().any(|c| c.name().as_str() == "video/x-raw")
-                    }) {
-                        let _ = src_pad.link(&sink_pad);
-                    }
+            if let Some(sink_pad) = videoconvert.static_pad("sink") {
+                if src_pad.current_caps().map_or(false, |caps| {
+                    caps.iter().any(|c| c.name().as_str() == "video/x-raw")
+                }) {
+                    let _ = src_pad.link(&sink_pad);
                 }
-            });
+            }
+        });
 
         videoconvert
             .link(&videoscale)
