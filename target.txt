@@ -30,7 +30,7 @@ how would i interact with it tho just via terminal? because if i did this i woul
 
 
 
-
+--mono ep 10
 
 
 
@@ -46,3 +46,8 @@ the clipping system would just create a new gstreamer pipeline then take the tim
 -- maybe should try to make a video editor?--
 -- floating file manager would also be a good shout tbh
 --how do i know what code it just put in?
+-- better way to look scroll through dirs in the terminal
+
+--keep track of school dates and stuff app?
+--would deadass just need to parse json into db then yeah?
+--i would want to use gtkshell cause i just want it to be floating
