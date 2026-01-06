@@ -295,6 +295,11 @@ impl App {
                                                 .width(140.0)
                                                 .on_press(Message::OpenVidFolder),
                                         )
+                                        .push(button("📁 GTK Chooser").width(140.0).on_press(
+                                            Message::SpawnGtkChooser(
+                                                self.video_folder_better.folder.clone(),
+                                            ),
+                                        ))
                                         .push(
                                             button("Open Subtitle File")
                                                 .width(150.0)

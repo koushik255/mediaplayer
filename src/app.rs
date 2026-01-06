@@ -75,6 +75,9 @@ pub struct App {
     pub default_video_path: Option<String>,
     pub screenshot_folder: Option<String>,
     pub notifications: Vec<Notification>,
+    pub gtk_chooser_selected_video: Option<std::sync::Arc<std::sync::Mutex<Option<PathBuf>>>>,
+    pub gtk_chooser_process: Option<std::process::Child>,
+    pub gtk_chooser_thread: Option<std::thread::JoinHandle<()>>,
 }
 
 impl Default for App {
@@ -202,6 +205,9 @@ impl Default for App {
             default_video_path: app_config.default_video_path,
             screenshot_folder: app_config.screenshot_folder,
             notifications: Vec::new(),
+            gtk_chooser_selected_video: None,
+            gtk_chooser_process: None,
+            gtk_chooser_thread: None,
         };
 
         app.detect_audio_tracks();
@@ -511,6 +517,19 @@ impl App {
                 if !self.is_built_in_subs {
                     println!("{}", self.is_built_in_subs);
                     self.update_active_subtitle();
+                }
+
+                if let Some(ref arc) = self.gtk_chooser_selected_video {
+                    let path_opt = if let Ok(mut guard) = arc.lock() {
+                        guard.take()
+                    } else {
+                        None
+                    };
+
+                    if let Some(path) = path_opt {
+                        eprintln!("DEBUG: Found selected video in Arc: {:?}", path);
+                        self.load_video_from_gtk(path);
+                    }
                 }
 
                 Task::none()
@@ -1027,8 +1046,100 @@ impl App {
                 }
                 Task::none()
             }
+            Message::SpawnGtkChooser(folder_path) => {
+                eprintln!(
+                    "DEBUG: Received SpawnGtkChooser message with folder: {}",
+                    folder_path
+                );
+                self.spawn_gtk_chooser(folder_path)
+            }
+            Message::GtkVideoSelected(path) => {
+                self.gtk_chooser_selected_video =
+                    Some(std::sync::Arc::new(std::sync::Mutex::new(Some(path))));
+                Task::none()
+            }
         }
     }
+
+    fn spawn_gtk_chooser(&mut self, folder_path: String) -> Task<Message> {
+        use std::process::{Command, Stdio};
+        use std::thread;
+
+        eprintln!(
+            "DEBUG: spawn_gtk_chooser called with folder: {}",
+            folder_path
+        );
+
+        if let Some(mut child) = self.gtk_chooser_process.take() {
+            eprintln!("DEBUG: Killing existing gtk chooser process");
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+
+        let selected_arc = std::sync::Arc::new(std::sync::Mutex::new(None::<PathBuf>));
+        self.gtk_chooser_selected_video = Some(selected_arc.clone());
+
+        eprintln!("DEBUG: Spawning kousgrep process");
+        match Command::new("/home/koushikk/Documents/Rust2/gtkshell/target/release/kousgrep")
+            .arg(&folder_path)
+            .stdout(Stdio::piped())
+            .spawn()
+        {
+            Ok(mut child) => {
+                eprintln!(
+                    "DEBUG: kousgrep spawned successfully, PID: {:?}",
+                    child.id()
+                );
+                let stdout = child.stdout.take().expect("Failed to capture stdout");
+
+                let thread_handle = thread::spawn(move || {
+                    use std::io::{BufRead, BufReader};
+
+                    let reader = BufReader::new(stdout);
+                    let mut last_path: Option<PathBuf> = None;
+                    let mut line_count = 0;
+
+                    eprintln!("DEBUG: GTK chooser stdout reader thread started");
+
+                    for line in reader.lines() {
+                        match line {
+                            Ok(line_str) => {
+                                line_count += 1;
+                                eprintln!("DEBUG: Read line {}: {}", line_count, line_str);
+                                let path = PathBuf::from(&line_str);
+                                last_path = Some(path.clone());
+
+                                if let Ok(mut guard) = selected_arc.lock() {
+                                    *guard = Some(path);
+                                    eprintln!("DEBUG: Updated selected_video Arc with path");
+                                } else {
+                                    eprintln!("DEBUG: Failed to lock selected_video Arc");
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("DEBUG: Error reading line: {}", e);
+                            }
+                        }
+                    }
+
+                    eprintln!(
+                        "DEBUG: Stdout stream closed, total lines read: {}",
+                        line_count
+                    );
+                });
+
+                self.gtk_chooser_process = Some(child);
+                self.gtk_chooser_thread = Some(thread_handle);
+
+                Task::none()
+            }
+            Err(e) => {
+                eprintln!("Failed to spawn gtk chooser: {}", e);
+                Task::none()
+            }
+        }
+    }
+
     fn detect_audio_tracks(&mut self) {
         self.available_audio_tracks.clear();
         self.current_audio_track = 0;
@@ -1099,6 +1210,50 @@ impl App {
             .iter()
             .find(|sub| current_time >= sub.start && current_time <= sub.end)
             .map(|sub| sub.text.clone());
+    }
+
+    fn load_video_from_gtk(&mut self, path: PathBuf) {
+        eprintln!("DEBUG: load_video_from_gtk called with path: {:?}", path);
+
+        if !path.exists() {
+            eprintln!("DEBUG: Video file does not exist: {:?}", path);
+            return;
+        }
+
+        eprintln!("DEBUG: Path exists, creating URL");
+        let url = match url::Url::from_file_path(&path) {
+            Ok(url) => url,
+            Err(e) => {
+                eprintln!("DEBUG: Error creating URL: {:?}", e);
+                return;
+            }
+        };
+
+        eprintln!("DEBUG: URL created, loading video");
+        match Video::new(&url) {
+            Ok(new_video) => {
+                self.video = new_video;
+                self.video_url = path.clone();
+                self.position = 0.0;
+                self.detect_audio_tracks();
+                self.detect_subtitle_tracks();
+                self.kill_gtk_chooser();
+                println!("Loaded video: {}", path.display());
+                eprintln!("DEBUG: Video loaded successfully and kousgrep killed");
+            }
+            Err(e) => {
+                eprintln!("DEBUG: Failed to load video: {:?}", e);
+            }
+        }
+    }
+
+    fn kill_gtk_chooser(&mut self) {
+        if let Some(mut child) = self.gtk_chooser_process.take() {
+            eprintln!("DEBUG: Killing gtk chooser process");
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        self.gtk_chooser_thread.take();
     }
 
     fn capture_and_save_screenshot(&mut self, save_path: &PathBuf) {

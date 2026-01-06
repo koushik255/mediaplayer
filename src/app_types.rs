@@ -44,6 +44,8 @@ pub enum Message {
     SetScreenshotFolder(Result<std::path::PathBuf, String>),
     ShowNotification(String),
     DismissNotification,
+    SpawnGtkChooser(String),
+    GtkVideoSelected(std::path::PathBuf),
 }
 
 #[derive(Debug, Clone)]
