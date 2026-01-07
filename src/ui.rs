@@ -92,6 +92,8 @@ impl App {
             }
         };
 
+        let filename_text_clone = filename_text.clone();
+
         let _subtitles_file = self
             .subtitle_file
             .file_name()
@@ -105,20 +107,20 @@ impl App {
             // println!("{heresubdudebud}");
         }
 
-        let title_text = Container::new(Text::new(filename_text).size(18).color(WHITE))
-            .padding(8)
-            .style(|_theme| iced::widget::container::Style {
-                background: Some(iced::Background::Color(iced::Color::from_rgba(
-                    0.0, 0.0, 0.0, 0.8,
-                ))),
-                border: iced::border::Border {
-                    color: iced::Color::TRANSPARENT,
-                    width: 0.0,
-                    radius: 5.0.into(),
-                },
-                shadow: iced::Shadow::default(),
-                text_color: Some(WHITE),
-            });
+        // let title_text = Container::new(Text::new(filename_text).size(18).color(WHITE))
+        //     .padding(8)
+        //     .style(|_theme| iced::widget::container::Style {
+        //         background: Some(iced::Background::Color(iced::Color::from_rgba(
+        //             0.0, 0.0, 0.0, 0.8,
+        //         ))),
+        //         border: iced::border::Border {
+        //             color: iced::Color::TRANSPARENT,
+        //             width: 0.0,
+        //             radius: 5.0.into(),
+        //         },
+        //         shadow: iced::Shadow::default(),
+        //         text_color: Some(WHITE),
+        //     });
 
         let video_layer = Container::new(
             VideoPlayer::new(&self.video)
@@ -158,16 +160,16 @@ impl App {
                     .left(self.subtitle_offset_horizontal as f32),
             );
 
-        let title_layer = Container::new(title_text)
-            .width(iced::Length::Fixed(self.video_width))
-            .height(iced::Length::Fixed(self.video_height))
-            .align_x(iced::Alignment::End)
-            .align_y(iced::Alignment::Start)
-            .padding(iced::Padding::new(0.0));
+        // let title_layer = Container::new(title_text)
+        //     .width(iced::Length::Fixed(self.video_width))
+        //     .height(iced::Length::Fixed(self.video_height))
+        //     .align_x(iced::Alignment::End)
+        //     .align_y(iced::Alignment::Start)
+        //     .padding(iced::Padding::new(0.0));
 
         let overlay_stack = Stack::new()
             .push(video_layer)
-            .push(title_layer)
+            //.push(title_layer)
             .push(subtitle_layer);
 
         let video_with_list = Row::new()
@@ -189,13 +191,23 @@ impl App {
                         Row::new()
                             .spacing(5)
                             .push(
-                                Button::new(Text::new(if self.video.paused() {
-                                    "Play"
-                                } else {
-                                    "Pause"
-                                }))
-                                .width(120.0)
-                                .on_press(Message::TogglePause),
+                                Column::new()
+                                    .spacing(2)
+                                    .push(
+                                        Text::new(filename_text_clone)
+                                            .size(10)
+                                            .color(WHITE)
+                                            .width(120.0),
+                                    )
+                                    .push(
+                                        Button::new(Text::new(if self.video.paused() {
+                                            "Play"
+                                        } else {
+                                            "Pause"
+                                        }))
+                                        .width(120.0)
+                                        .on_press(Message::TogglePause),
+                                    ),
                             )
                             .push(
                                 Button::new(Text::new("Settings"))
