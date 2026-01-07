@@ -18,6 +18,9 @@ pub struct AppConfig {
 
     #[serde(default)]
     pub subtitle_offset_horizontal: f64,
+
+    #[serde(default)]
+    pub subtitle_timing_offset: f32,
 }
 
 impl Default for AppConfig {
@@ -28,6 +31,7 @@ impl Default for AppConfig {
             subtitle_offset: 100.0,
             subtitle_offset_vertical: 100.0,
             subtitle_offset_horizontal: 0.0,
+            subtitle_timing_offset: 0.0,
         }
     }
 }

@@ -69,6 +69,7 @@ pub struct App {
     pub subtitle_offset: f64,
     pub subtitle_offset_vertical: f64,
     pub subtitle_offset_horizontal: f64,
+    pub subtitle_timing_offset: f32,
     pub video_width: f32,
     pub video_height: f32,
     pub settings_open: bool,
@@ -200,6 +201,7 @@ impl Default for App {
             subtitle_offset: app_config.subtitle_offset,
             subtitle_offset_vertical: app_config.subtitle_offset_vertical,
             subtitle_offset_horizontal: app_config.subtitle_offset_horizontal,
+            subtitle_timing_offset: app_config.subtitle_timing_offset,
             video_width,
             video_height,
             settings_open: false,
@@ -599,6 +601,7 @@ impl App {
                     subtitle_offset: self.subtitle_offset,
                     subtitle_offset_vertical: self.subtitle_offset_vertical,
                     subtitle_offset_horizontal: self.subtitle_offset_horizontal,
+                    subtitle_timing_offset: self.subtitle_timing_offset,
                 };
 
                 if let Err(e) = save_config(&app_config) {
@@ -875,6 +878,25 @@ impl App {
                 self.subtitle_offset_horizontal = offset;
                 Task::none()
             }
+            Message::SubtitleTimingOffsetChanged(offset) => {
+                self.subtitle_timing_offset = offset;
+                self.update_active_subtitle();
+
+                let app_config = AppConfig {
+                    default_video_path: self.default_video_path.clone(),
+                    screenshot_folder: self.screenshot_folder.clone(),
+                    subtitle_offset: self.subtitle_offset,
+                    subtitle_offset_vertical: self.subtitle_offset_vertical,
+                    subtitle_offset_horizontal: self.subtitle_offset_horizontal,
+                    subtitle_timing_offset: self.subtitle_timing_offset,
+                };
+
+                if let Err(e) = save_config(&app_config) {
+                    eprintln!("Failed to save config: {}", e);
+                }
+
+                Task::none()
+            }
             Message::ToggleSettings => {
                 self.settings_open = !self.settings_open;
                 Task::none()
@@ -995,6 +1017,7 @@ impl App {
                     subtitle_offset: self.subtitle_offset,
                     subtitle_offset_vertical: self.subtitle_offset_vertical,
                     subtitle_offset_horizontal: self.subtitle_offset_horizontal,
+                    subtitle_timing_offset: self.subtitle_timing_offset,
                 };
 
                 if let Err(e) = save_config(&app_config) {
@@ -1035,6 +1058,7 @@ impl App {
                     subtitle_offset: self.subtitle_offset,
                     subtitle_offset_vertical: self.subtitle_offset_vertical,
                     subtitle_offset_horizontal: self.subtitle_offset_horizontal,
+                    subtitle_timing_offset: self.subtitle_timing_offset,
                 };
 
                 if let Err(e) = save_config(&app_config) {
@@ -1239,11 +1263,13 @@ impl App {
 
     fn update_active_subtitle(&mut self) {
         let current_time = Duration::from_secs_f64(self.position);
+        let offset_time =
+            current_time + Duration::from_secs_f64(self.subtitle_timing_offset as f64);
 
         self.active_subtitle = self
             .subtitles
             .iter()
-            .find(|sub| current_time >= sub.start && current_time <= sub.end)
+            .find(|sub| offset_time >= sub.start && offset_time <= sub.end)
             .map(|sub| sub.text.clone());
     }
 

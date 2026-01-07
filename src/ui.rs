@@ -547,6 +547,24 @@ impl App {
                             .push(
                                 Row::new()
                                     .spacing(10)
+                                    .push(Text::new("Subtitle Timing (s):").color(WHITE))
+                                    .push(
+                                        Slider::new(
+                                            -5.0..=5.0,
+                                            self.subtitle_timing_offset,
+                                            Message::SubtitleTimingOffsetChanged,
+                                        )
+                                        .step(0.1)
+                                        .width(280.0),
+                                    )
+                                    .push(
+                                        Text::new(format!("{:.1}s", self.subtitle_timing_offset))
+                                            .color(WHITE),
+                                    ),
+                            )
+                            .push(
+                                Row::new()
+                                    .spacing(10)
                                     .push(Text::new("Subtitle Offset V:").color(WHITE))
                                     .push(
                                         Slider::new(

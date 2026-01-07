@@ -31,6 +31,7 @@ pub enum Message {
     SubtitleOffsetChanged(f64),
     SubtitleOffsetVerticalChanged(f64),
     SubtitleOffsetHorizontalChanged(f64),
+    SubtitleTimingOffsetChanged(f32),
     VideoWidthChanged(f32),
     VideoHeightChanged(f32),
     ToggleSettings,

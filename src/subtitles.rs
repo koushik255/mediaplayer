@@ -21,7 +21,7 @@ pub fn ass_time_to_duration(t: &str) -> Option<Duration> {
     let cs = sc.next()?.parse::<u64>().ok()?;
 
     let millis = h * 3_600_000 + m * 60_000 + s * 1_000 + cs * 10;
-    Some(Duration::from_millis(millis) + Duration::from_secs(2))
+    Some(Duration::from_millis(millis))
 }
 
 pub fn strip_ass_tags(s: &str) -> String {
