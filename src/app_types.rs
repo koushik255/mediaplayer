@@ -47,6 +47,7 @@ pub enum Message {
     DismissNotification,
     SpawnGtkChooser(String),
     GtkVideoSelected(std::path::PathBuf),
+    KeyboardEvent(iced::keyboard::Key),
 }
 
 #[derive(Debug, Clone)]

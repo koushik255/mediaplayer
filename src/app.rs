@@ -1,4 +1,6 @@
+use iced::Subscription;
 use iced::Task;
+use iced::keyboard;
 use iced_video_player::Video;
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
@@ -222,6 +224,24 @@ impl Default for App {
 impl App {
     pub fn new() -> (Self, Task<Message>) {
         (Self::default(), Task::none())
+    }
+
+    pub fn subscription(&self) -> Subscription<Message> {
+        iced::event::listen_with(|event, status, _| {
+            if status == iced::event::Status::Captured {
+                return None;
+            }
+
+            if let iced::event::Event::Keyboard(keyboard_event) = event {
+                if let keyboard::Event::KeyPressed { key, .. } = keyboard_event {
+                    Some(Message::KeyboardEvent(key))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
     }
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
@@ -1059,6 +1079,20 @@ impl App {
                     Some(std::sync::Arc::new(std::sync::Mutex::new(Some(path))));
                 Task::none()
             }
+            Message::KeyboardEvent(key) => match key {
+                keyboard::Key::Named(keyboard::key::Named::Space) => {
+                    self.video.set_paused(!self.video.paused());
+                    Task::none()
+                }
+                keyboard::Key::Character(c) => {
+                    if c.as_ref() == "p" {
+                        let folder_path = self.video_folder_better.folder.clone();
+                        return self.spawn_gtk_chooser(folder_path);
+                    }
+                    Task::none()
+                }
+                _ => Task::none(),
+            },
         }
     }
 

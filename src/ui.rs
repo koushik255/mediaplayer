@@ -198,21 +198,6 @@ impl App {
                                 .on_press(Message::TogglePause),
                             )
                             .push(
-                                Button::new(Text::new(if self.video.looping() {
-                                    "Disable Loop"
-                                } else {
-                                    "Enable Loop"
-                                }))
-                                .width(120.0)
-                                .on_press(Message::ToggleLoop),
-                            )
-                            .push(self.next_button())
-                            .push(
-                                Button::new(Text::new("Previous"))
-                                    .width(120.0)
-                                    .on_press(Message::OpenLast),
-                            )
-                            .push(
                                 Button::new(Text::new("Settings"))
                                     .width(120.0)
                                     .on_press(Message::ToggleSettings),
@@ -256,25 +241,6 @@ impl App {
                                 Container::new(
                                     Row::new()
                                         .spacing(8)
-                                        .push(
-                                            Button::new(Text::new(if self.muted {
-                                                "Mute"
-                                            } else {
-                                                "Unmute"
-                                            }))
-                                            .width(150.0)
-                                            .on_press(Message::ToggleMute),
-                                        )
-                                        .push(
-                                            button("Own Subs")
-                                                .width(150.0)
-                                                .on_press(Message::UsingOwnSubs),
-                                        )
-                                        .push(
-                                            button("Add At Selection")
-                                                .width(150.0)
-                                                .on_press(Message::AddAtSelection),
-                                        )
                                         .push(self.audio_track_button())
                                         .push(self.subtitle_track_button()),
                                 )
@@ -448,7 +414,52 @@ impl App {
                 .push(
                     Container::new(
                         Column::new()
-                            .spacing(12)
+                            .spacing(15)
+                            .push(Text::new("Playback Controls").size(18).color(WHITE))
+                            .push(
+                                Row::new()
+                                    .spacing(10)
+                                    .push(
+                                        Button::new(Text::new(if self.video.looping() {
+                                            "Disable Loop"
+                                        } else {
+                                            "Enable Loop"
+                                        }))
+                                        .width(150.0)
+                                        .on_press(Message::ToggleLoop),
+                                    )
+                                    .push(
+                                        Button::new(Text::new(if self.muted {
+                                            "Mute"
+                                        } else {
+                                            "Unmute"
+                                        }))
+                                        .width(150.0)
+                                        .on_press(Message::ToggleMute),
+                                    )
+                                    .push(self.next_button())
+                                    .push(
+                                        Button::new(Text::new("Previous"))
+                                            .width(150.0)
+                                            .on_press(Message::OpenLast),
+                                    ),
+                            )
+                            .push(Text::new("Subtitle Controls").size(18).color(WHITE))
+                            .push(
+                                Row::new()
+                                    .spacing(10)
+                                    .push(
+                                        Button::new(Text::new("Own Subs"))
+                                            .width(150.0)
+                                            .on_press(Message::UsingOwnSubs),
+                                    )
+                                    .push(
+                                        Button::new(Text::new("Add At Selection"))
+                                            .width(150.0)
+                                            .on_press(Message::AddAtSelection),
+                                    ),
+                            )
+                            .push(Text::new("Display Settings").size(18).color(WHITE))
                             .push(
                                 Row::new()
                                     .spacing(10)
@@ -502,6 +513,7 @@ impl App {
                                             .color(WHITE),
                                     ),
                             )
+                            .push(Text::new("Subtitle Offsets").size(18).color(WHITE))
                             .push(
                                 Row::new()
                                     .spacing(10)
@@ -562,6 +574,7 @@ impl App {
                                         .color(WHITE),
                                     ),
                             )
+                            .push(Text::new("Default Paths").size(18).color(WHITE))
                             .push(
                                 Row::new()
                                     .spacing(10)
@@ -621,7 +634,7 @@ impl App {
                         text_color: None,
                     }),
                 )
-                .width(800)
+                .width(900)
                 .height(iced::Length::Shrink),
         )
         .style(|_theme| iced::widget::container::Style {
