@@ -70,6 +70,7 @@ pub struct App {
     pub video_width: f32,
     pub video_height: f32,
     pub settings_open: bool,
+    pub file_panel_open: bool,
     pub video_info_open: bool,
     pub video_info_text: Option<String>,
     pub default_video_path: Option<String>,
@@ -107,7 +108,7 @@ impl Default for App {
             _volume,
         ) = match load_settings() {
             Ok(settings) => settings,
-            Err(_) => (100.0, 100.0, 0.0, 1450.0, 1080.0, 1.0),
+            Err(_) => (100.0, 100.0, 0.0, 1650.0, 1080.0, 1.0),
         };
 
         let app_config = match load_config() {
@@ -200,6 +201,7 @@ impl Default for App {
             video_width,
             video_height,
             settings_open: false,
+            file_panel_open: false,
             video_info_open: false,
             video_info_text: None,
             default_video_path: app_config.default_video_path,
@@ -761,16 +763,11 @@ impl App {
                 self.vec.clear();
 
                 for (_i, vid) in herebro {
-                    let display_name = vid
+                    let _display_name = vid
                         .file_name()
                         .unwrap_or_default()
                         .to_string_lossy()
                         .into_owned();
-                    self.vec.push(display_name.clone());
-                    self.video_entries.push(VideoEntry {
-                        display_name,
-                        full_path: vid,
-                    });
                 }
 
                 self.video_folder_better.folder = bomba.clone().to_string_lossy().into_owned();
@@ -860,6 +857,10 @@ impl App {
             }
             Message::ToggleSettings => {
                 self.settings_open = !self.settings_open;
+                Task::none()
+            }
+            Message::ToggleFilePanel => {
+                self.file_panel_open = !self.file_panel_open;
                 Task::none()
             }
             Message::ToggleVideoInfo => {

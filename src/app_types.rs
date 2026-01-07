@@ -34,6 +34,7 @@ pub enum Message {
     VideoWidthChanged(f32),
     VideoHeightChanged(f32),
     ToggleSettings,
+    ToggleFilePanel,
     ToggleVideoInfo,
     VideoInfoExtracted(String),
     TakeScreenshotURI,

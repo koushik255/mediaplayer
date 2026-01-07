@@ -34,6 +34,15 @@ impl App {
                 ),
             )
             .into()
+        } else if self.file_panel_open {
+            Container::new(
+                Stack::new().push(content_with_notifications).push(
+                    Container::new(self.file_panel_window())
+                        .align_x(iced::Alignment::Center)
+                        .align_y(iced::Alignment::Center),
+                ),
+            )
+            .into()
         } else if self.video_info_open {
             Container::new(
                 Stack::new().push(content_with_notifications).push(
@@ -241,7 +250,7 @@ impl App {
                 )
                 .push(
                     Container::new(
-                        Column::new()
+                        Row::new()
                             .spacing(10)
                             .push(
                                 Container::new(
@@ -287,35 +296,9 @@ impl App {
                             )
                             .push(
                                 Container::new(
-                                    Row::new()
-                                        .spacing(5)
-                                        .push(button("Open").width(120.0).on_press(Message::Open))
-                                        .push(
-                                            button("Open Video Folder")
-                                                .width(140.0)
-                                                .on_press(Message::OpenVidFolder),
-                                        )
-                                        .push(button("📁 GTK Chooser").width(140.0).on_press(
-                                            Message::SpawnGtkChooser(
-                                                self.video_folder_better.folder.clone(),
-                                            ),
-                                        ))
-                                        .push(
-                                            button("Open Subtitle File")
-                                                .width(150.0)
-                                                .on_press(Message::OpenSubtitle),
-                                        )
-                                        .push(
-                                            button("Open Subtitle Folder")
-                                                .width(160.0)
-                                                .on_press(Message::OpenSubFolder),
-                                        )
-                                        .push(
-                                            button("Screenshot (URI)")
-                                                .width(140.0)
-                                                .on_press(Message::TakeScreenshotURI),
-                                        )
-                                        .push(button("Quit").width(120.0).on_press(Message::Quit)),
+                                    button("File")
+                                        .width(120.0)
+                                        .on_press(Message::ToggleFilePanel),
                                 )
                                 .padding(10)
                                 .style(|_theme| {
@@ -733,6 +716,92 @@ impl App {
             text_color: None,
         })
         .width(750)
+        .into()
+    }
+
+    fn file_panel_window(&self) -> Element<'_, Message> {
+        const WHITE: iced::Color = iced::Color::WHITE;
+
+        Container::new(
+            Column::new()
+                .spacing(15)
+                .padding(20)
+                .push(
+                    Row::new()
+                        .spacing(10)
+                        .align_y(iced::Alignment::Center)
+                        .push(Text::new("File").size(24).color(WHITE))
+                        .push(Row::new().width(iced::Length::Fill))
+                        .push(
+                            Button::new(Text::new("✕"))
+                                .on_press(Message::ToggleFilePanel)
+                                .width(40.0),
+                        ),
+                )
+                .push(
+                    Container::new(
+                        Column::new()
+                            .spacing(10)
+                            .push(button("Open").width(280.0).on_press(Message::Open))
+                            .push(
+                                button("Open Video Folder")
+                                    .width(280.0)
+                                    .on_press(Message::OpenVidFolder),
+                            )
+                            .push(button("📁 GTK Chooser").width(280.0).on_press(
+                                Message::SpawnGtkChooser(self.video_folder_better.folder.clone()),
+                            ))
+                            .push(
+                                button("Open Subtitle File")
+                                    .width(280.0)
+                                    .on_press(Message::OpenSubtitle),
+                            )
+                            .push(
+                                button("Open Subtitle Folder")
+                                    .width(280.0)
+                                    .on_press(Message::OpenSubFolder),
+                            )
+                            .push(
+                                button("Screenshot (URI)")
+                                    .width(280.0)
+                                    .on_press(Message::TakeScreenshotURI),
+                            )
+                            .push(button("Quit").width(280.0).on_press(Message::Quit)),
+                    )
+                    .padding(15)
+                    .style(|_theme| iced::widget::container::Style {
+                        background: Some(iced::Background::Color(iced::Color::from_rgb(
+                            0.1, 0.1, 0.1,
+                        ))),
+                        border: iced::border::Border {
+                            color: iced::Color::from_rgb(0.3, 0.3, 0.3),
+                            width: 2.0,
+                            radius: 8.0.into(),
+                        },
+                        shadow: iced::Shadow::default(),
+                        text_color: None,
+                    }),
+                )
+                .width(350)
+                .height(iced::Length::Shrink),
+        )
+        .style(|_theme| iced::widget::container::Style {
+            background: Some(iced::Background::Color(iced::Color::from_rgba(
+                0.0, 0.0, 0.0, 0.95,
+            ))),
+            border: iced::border::Border {
+                color: iced::Color::from_rgb(0.4, 0.4, 0.4),
+                width: 2.0,
+                radius: 12.0.into(),
+            },
+            shadow: iced::Shadow {
+                color: iced::Color::BLACK,
+                offset: iced::Vector::new(8.0, 8.0),
+                blur_radius: 25.0,
+            },
+            text_color: None,
+        })
+        .width(350)
         .into()
     }
 }
