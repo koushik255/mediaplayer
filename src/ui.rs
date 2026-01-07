@@ -167,10 +167,13 @@ impl App {
         //     .align_y(iced::Alignment::Start)
         //     .padding(iced::Padding::new(0.0));
 
-        let overlay_stack = Stack::new()
-            .push(video_layer)
-            //.push(title_layer)
-            .push(subtitle_layer);
+        let mut overlay_stack = Stack::new().push(video_layer);
+
+        if self.subtitles.len() > 0 || self.has_embedded_subtitles {
+            overlay_stack = overlay_stack.push(subtitle_layer);
+        }
+
+        //.push(title_layer)
 
         let video_with_list = Row::new()
             .push(
