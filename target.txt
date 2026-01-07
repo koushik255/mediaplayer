@@ -24,6 +24,11 @@ it would be transparent and it would just be over the screen it would be good
 -- do i need to do allat? well i could and then i could also just use it as a "frontend" like a panel and the customization would be good
 how would i interact with it tho just via terminal? because if i did this i would everything to be apart of this settings thing
 --if i wanted to control the player from an external resource how would i do so? or how would i make it possible?
+-- since iced ui is so so so dogshit i want to extrapolate all the ui, this would be possible becase of the message system which iced implements
+what would i want to keep in the iced?
+volume, audio + subtitles track control (not the movement )
+
+
 
 --want to make it so that the subtitles are line 100% correct always, but how would i implement a system for that?
 
@@ -42,12 +47,3 @@ the clipping system would just create a new gstreamer pipeline then take the tim
 --add keybinds---
 
 
-
--- maybe should try to make a video editor?--
--- floating file manager would also be a good shout tbh
---how do i know what code it just put in?
--- better way to look scroll through dirs in the terminal
-
---keep track of school dates and stuff app?
---would deadass just need to parse json into db then yeah?
---i would want to use gtkshell cause i just want it to be floating

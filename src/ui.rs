@@ -128,7 +128,7 @@ impl App {
         )
         .width(iced::Length::Fixed(self.video_width))
         .height(iced::Length::Fixed(self.video_height))
-        .padding(iced::Padding::new(0.0).top(50.0));
+        .padding(iced::Padding::new(0.0).top(10.0).left(20.0));
 
         let subtitle_text = Container::new(
             Text::new(heresubdudebud).size(35).color(WHITE), // the subtitle
@@ -149,7 +149,7 @@ impl App {
 
         let subtitle_layer = Container::new(subtitle_text)
             .width(iced::Length::Fixed(self.video_width))
-            .height(iced::Length::Fixed(self.video_height + 50.0))
+            .height(iced::Length::Fixed(self.video_height + 100.0))
             .align_x(iced::Alignment::Center)
             .align_y(iced::Alignment::End)
             .padding(
@@ -160,10 +160,10 @@ impl App {
 
         let title_layer = Container::new(title_text)
             .width(iced::Length::Fixed(self.video_width))
-            .height(iced::Length::Fixed(self.video_height + 50.0))
+            .height(iced::Length::Fixed(self.video_height))
             .align_x(iced::Alignment::End)
             .align_y(iced::Alignment::Start)
-            .padding(iced::Padding::new(5.0));
+            .padding(iced::Padding::new(0.0));
 
         let overlay_stack = Stack::new()
             .push(video_layer)
@@ -175,7 +175,7 @@ impl App {
                 Container::new(overlay_stack)
                     .align_x(iced::Alignment::Start)
                     .align_y(iced::Alignment::Center)
-                    .padding(Padding::new(0.0).left(20.0).top(60.0)),
+                    .padding(Padding::new(0.0).left(000.0).top(0.0)),
             )
             .push(self.list());
 
@@ -335,6 +335,7 @@ impl App {
 
         Column::new()
             .push(video_with_list)
+            //.push(overlay_stack)
             .push(
                 Container::new(
                     Slider::new(
