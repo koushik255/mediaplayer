@@ -2,3 +2,4 @@ screenshot_folder = "/home/koushikk/Downloads/SHOWS/screenshots"
 subtitle_offset = 100.0
 subtitle_offset_vertical = 100.0
 subtitle_offset_horizontal = 0.0
+subtitle_timing_offset = 0.0

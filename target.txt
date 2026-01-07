@@ -17,6 +17,19 @@ DONE--i also want to implement my file viewer thing, like instead of when you op
 
 
 
+
+
+
+
+--ISSUES--
+ if there are no subtitles why is the subtitles little thing on the screen?/layer
+why is the video not in the middle of the whole application, like the space between the left and the right of the edges are un even
+why are the settings and video info button on the same vertical axis as the text, even when there is empty space below them, and why is the file button not in the same
+container as the other visible buttons
+
+
+
+
 --Todo
 add skip intros
 
