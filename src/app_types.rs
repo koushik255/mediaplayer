@@ -49,6 +49,8 @@ pub enum Message {
     SpawnGtkChooser(String),
     GtkVideoSelected(std::path::PathBuf),
     KeyboardEvent(iced::keyboard::Key),
+    GetMonitorSize,
+    MonitorSizeRetrieved(String),
 }
 
 #[derive(Debug, Clone)]

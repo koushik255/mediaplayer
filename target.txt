@@ -17,7 +17,13 @@ DONE--i also want to implement my file viewer thing, like instead of when you op
 
 
 
+--- DIFFERENT MONITORS FUCKS EVERYTHING UP 
+-- maybe you would want it so that instead of seeing any buttons its basically just all keybinds and popup menus
+subs still fuckedZ":
+-- need to get the current display resolution the iced window is on then the video resolution would just change depending on that 
 
+--Ok, i think i need the setttings menu to be better first, then subtitles then fix the monitor situtaion
+--also maybe just switch of iced because what im doing isnt excusive to it
 
 
 

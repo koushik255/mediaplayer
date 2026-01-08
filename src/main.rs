@@ -16,7 +16,9 @@ fn main() -> iced::Result {
 
     println!("runnig on new");
     iced::application("Iced Video Player", App::update, App::view)
-        .window_size(iced::Size::new(1700.0, 1300.0))
+        .resizable(true)
+        .window_size(iced::Size::new(1920.0, 1200.0))
+        .resizable(true)
         .subscription(App::subscription)
         .run_with(App::new)
 }

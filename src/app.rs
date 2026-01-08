@@ -17,7 +17,10 @@ use url::Url;
 fn run_gst_discoverer(video_path: &PathBuf) -> String {
     use std::process::Command;
 
-    let output = Command::new("gst-discoverer-1.0").arg(video_path).output();
+    let output = Command::new("gst-discoverer-1.0")
+        .arg("-c")
+        .arg(video_path)
+        .output();
 
     match output {
         Ok(output) => {
@@ -867,7 +870,7 @@ impl App {
                 Task::none()
             }
             Message::VideoHeightChanged(height) => {
-                self.video_height = height.clamp(450.0, 1080.0);
+                self.video_height = height.clamp(450.0, 1200.0);
                 Task::none()
             }
             Message::SubtitleOffsetVerticalChanged(offset) => {
@@ -927,6 +930,40 @@ impl App {
             }
             Message::VideoInfoExtracted(output) => {
                 self.video_info_text = Some(output);
+                Task::none()
+            }
+            Message::GetMonitorSize => {
+                return Task::perform(
+                    async {
+                        // Use xrandr to get monitor size on Linux
+                        use std::process::Command;
+
+                        let output = Command::new("xrandr").arg("--query").output();
+
+                        match output {
+                            Ok(output) => {
+                                let stdout = String::from_utf8_lossy(&output.stdout);
+                                // Parse to find line containing current resolution (marked with *)
+                                if let Some(line) = stdout.lines().find(|l| l.contains('*')) {
+                                    if let Some(res) = line.split_whitespace().nth(0) {
+                                        format!("Monitor size: {}", res)
+                                    } else {
+                                        "Could not parse resolution".to_string()
+                                    }
+                                } else {
+                                    "No active display found".to_string()
+                                }
+                            }
+                            Err(e) => {
+                                format!("Error running xrandr: {}", e)
+                            }
+                        }
+                    },
+                    Message::MonitorSizeRetrieved,
+                );
+            }
+            Message::MonitorSizeRetrieved(info) => {
+                println!("{}", info);
                 Task::none()
             }
             Message::TakeScreenshotURI => {

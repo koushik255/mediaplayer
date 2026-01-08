@@ -1,6 +1,7 @@
 use iced::Alignment;
 use iced::Font;
 use iced::Length;
+use iced_aw::style::colors::BLACK;
 use std::path::{Path, PathBuf};
 
 use iced::widget::{Button, Column, Container, Row, Scrollable, Slider, Stack, Text, button};
@@ -103,6 +104,7 @@ impl App {
 
         let mut heresubdudebud = String::new();
         if let Some(text) = &self.active_subtitle {
+            //heresubdudebud = text.to_string();
             heresubdudebud = text.replace("&apos;", "'").replace("&quot;", "\"");
             // println!("{heresubdudebud}");
         }
@@ -128,9 +130,11 @@ impl App {
                 .on_new_frame(Message::NewFrame)
                 .on_subtitle_text(Message::NewSub),
         )
-        .width(iced::Length::Fixed(self.video_width))
-        .height(iced::Length::Fixed(self.video_height))
-        .padding(iced::Padding::new(0.0).top(10.0).left(20.0));
+        .width(iced::Length::Fill)
+        .height(iced::Length::Fill)
+        .align_x(iced::Center)
+        .align_y(iced::Center);
+        //.padding(iced::Padding::new(0.0).top(0.0).left(0.0));
 
         let subtitle_text = Container::new(
             Text::new(heresubdudebud).size(35).color(WHITE), // the subtitle
@@ -187,45 +191,45 @@ impl App {
                 .spacing(15)
                 .align_y(iced::Alignment::End)
                 .padding(10)
-                .push(
-                    Container::new(
-                        Row::new()
-                            .spacing(5)
-                            .push(
-                                Column::new()
-                                    .spacing(2)
-                                    // .push(
-                                    //     Text::new(filename_text_clone)
-                                    //         .size(10)
-                                    //         .color(WHITE)
-                                    //         .width(120.0),
-                                    // )
-                                    .push(
-                                        Button::new(Text::new(if self.video.paused() {
-                                            "Play"
-                                        } else {
-                                            "Pause"
-                                        }))
-                                        .width(100.0)
-                                        .on_press(Message::TogglePause),
-                                    ),
-                            )
-                            .push(
-                                Button::new(Text::new("Settings"))
+                .push(Container::new(
+                    Row::new()
+                        .spacing(5)
+                        .push(
+                            Column::new()
+                                .spacing(2)
+                                // .push(
+                                //     Text::new(filename_text_clone)
+                                //         .size(10)
+                                //         .color(WHITE)
+                                //         .width(120.0),
+                                // )
+                                .push(
+                                    Button::new(Text::new(if self.video.paused() {
+                                        "Play"
+                                    } else {
+                                        "Pause"
+                                    }))
                                     .width(100.0)
-                                    .on_press(Message::ToggleSettings),
-                            )
-                            .push(
-                                Button::new(Text::new("Video Info"))
-                                    .width(100.0)
-                                    .on_press(Message::ToggleVideoInfo),
-                            )
-                            .push(
-                                Button::new(Text::new("File2"))
-                                    .width(100.0)
-                                    .on_press(Message::ToggleFilePanel),
-                            )
-                            .push(
+                                    .on_press(Message::TogglePause),
+                                ),
+                        )
+                        .push(
+                            Button::new(Text::new("Settings"))
+                                .width(100.0)
+                                .on_press(Message::ToggleSettings),
+                        )
+                        .push(
+                            Button::new(Text::new("Video Info"))
+                                .width(100.0)
+                                .on_press(Message::ToggleVideoInfo),
+                        )
+                        .push(
+                            Button::new(Text::new("File2"))
+                                .width(100.0)
+                                .on_press(Message::ToggleFilePanel),
+                        )
+                        .push(
+                            Container::new(
                                 Text::new(format!(
                                     "{}:{:02} / {}:{:02}",
                                     self.position as u64 / 60,
@@ -234,84 +238,18 @@ impl App {
                                     self.video.duration().as_secs() % 60,
                                 ))
                                 .width(120.0)
-                                .align_x(iced::Alignment::Center),
-                            ),
-                    )
-                    .padding(5)
-                    .style(|_theme| iced::widget::container::Style {
-                        background: Some(iced::Background::Color(iced::Color::from_rgb(
-                            0.05, 0.05, 0.05,
-                        ))),
-                        border: iced::border::Border {
-                            color: iced::Color::from_rgb(0.2, 0.2, 0.2),
-                            width: 1.0,
-                            radius: 8.0.into(),
-                        },
-                        shadow: iced::Shadow::default(),
-                        text_color: None,
-                    }),
-                )
-                .push(
-                    Container::new(
-                        Row::new().spacing(10).push(
-                            Container::new(
-                                Row::new()
-                                    .spacing(8)
-                                    .push(self.audio_track_button())
-                                    .push(self.subtitle_track_button()),
+                                // .align_x(iced::Alignment::Center)
+                                .color(BLACK),
                             )
-                            // .padding(10)
-                            .style(|_theme| {
-                                iced::widget::container::Style {
-                                    background: Some(iced::Background::Color(
-                                        iced::Color::from_rgb(0.05, 0.05, 0.05),
-                                    )),
-                                    border: iced::border::Border {
-                                        color: iced::Color::from_rgb(0.2, 0.2, 0.2),
-                                        width: 1.0,
-                                        radius: 8.0.into(),
-                                    },
-                                    shadow: iced::Shadow::default(),
-                                    text_color: None,
-                                }
-                            }),
-                        ), // .push(
-                           //     Container::new(
-                           //         button("File")
-                           //             .width(120.0)
-                           //             .on_press(Message::ToggleFilePanel),
-                           //     )
-                           //     .padding(10)
-                           //     .style(|_theme| {
-                           //         iced::widget::container::Style {
-                           //             background: Some(iced::Background::Color(
-                           //                 iced::Color::from_rgb(0.05, 0.05, 0.05),
-                           //             )),
-                           //             border: iced::border::Border {
-                           //                 color: iced::Color::from_rgb(0.2, 0.2, 0.2),
-                           //                 width: 1.0,
-                           //                 radius: 8.0.into(),
-                           //             },
-                           //             shadow: iced::Shadow::default(),
-                           //             text_color: None,
-                           //         }
-                           //     }),
-                           // ),
-                    )
-                    // .padding(10)
-                    .style(|_theme| iced::widget::container::Style {
-                        background: Some(iced::Background::Color(iced::Color::from_rgb(
-                            0.02, 0.02, 0.02,
-                        ))),
-                        border: iced::border::Border {
-                            color: iced::Color::from_rgb(0.15, 0.15, 0.15),
-                            width: 1.0,
-                            radius: 8.0.into(),
-                        },
-                        shadow: iced::Shadow::default(),
-                        text_color: None,
-                    }),
-                ),
+                            .padding(iced::Padding::new(0.0).top(3.0)),
+                        )
+                        .push(Container::new(
+                            Row::new()
+                                .spacing(8)
+                                .push(self.audio_track_button())
+                                .push(self.subtitle_track_button()),
+                        )),
+                )),
         );
 
         Column::new()
@@ -326,8 +264,7 @@ impl App {
                     )
                     .step(0.1)
                     .on_release(Message::SeekRelease),
-                )
-                .padding(iced::Padding::new(5.0).left(10.0).right(10.0)),
+                ), //.padding(iced::Padding::new(5.0).left(10.0).right(10.0)),
             )
             .push(controls_row)
             .into()
@@ -412,8 +349,6 @@ impl App {
     fn settings_window(&self) -> Element<'_, Message> {
         Container::new(
             Column::new()
-                .spacing(15)
-                .padding(20)
                 .push(
                     Row::new()
                         .spacing(10)
@@ -429,7 +364,6 @@ impl App {
                 .push(
                     Container::new(
                         Column::new()
-                            .spacing(15)
                             .push(Text::new("Playback Controls").size(18).color(WHITE))
                             .push(
                                 Row::new()
@@ -516,7 +450,7 @@ impl App {
                                     .push(Text::new("Video Height:").color(WHITE))
                                     .push(
                                         Slider::new(
-                                            450.0..=1080.0,
+                                            450.0..=1200.0,
                                             self.video_height,
                                             Message::VideoHeightChanged,
                                         )
@@ -633,9 +567,16 @@ impl App {
                                         .width(280.0)
                                         .on_press(Message::OpenScreenshotFolderPicker),
                                     ),
+                            )
+                            .push(Text::new("System Info").size(18).color(WHITE))
+                            .push(
+                                Row::new().spacing(10).push(
+                                    Button::new(Text::new("Get Monitor Size"))
+                                        .width(280.0)
+                                        .on_press(Message::GetMonitorSize),
+                                ),
                             ),
                     )
-                    .padding(15)
                     .style(|_theme| iced::widget::container::Style {
                         background: Some(iced::Background::Color(iced::Color::from_rgb(
                             0.1, 0.1, 0.1,
