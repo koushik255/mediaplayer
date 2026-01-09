@@ -66,18 +66,6 @@ impl App {
         let notification_text = &self.notifications[0].message;
         Container::new(Text::new(notification_text).size(16).color(WHITE))
             .padding(10)
-            .style(|_theme| iced::widget::container::Style {
-                background: Some(iced::Background::Color(iced::Color::from_rgba(
-                    0.0, 0.0, 0.0, 0.8,
-                ))),
-                border: iced::border::Border {
-                    color: iced::Color::from_rgba(1.0, 1.0, 1.0, 0.3),
-                    width: 1.0,
-                    radius: 8.0.into(),
-                },
-                shadow: iced::Shadow::default(),
-                text_color: None,
-            })
             .into()
     }
 
@@ -131,11 +119,11 @@ impl App {
         //         text_color: Some(WHITE),
         //     });
 
+        // .on_subtitle_text(Message::NewSub),
         let video_layer = Container::new(
             VideoPlayer::new(&self.video)
                 .on_end_of_stream(Message::EndOfStream)
-                .on_new_frame(Message::NewFrame)
-                .on_subtitle_text(Message::NewSub),
+                .on_new_frame(Message::NewFrame),
         )
         .width(iced::Length::Fill)
         .height(iced::Length::Fill)
@@ -146,19 +134,7 @@ impl App {
         let subtitle_text = Container::new(
             Text::new(heresubdudebud).size(35).color(WHITE), // the subtitle
         )
-        .padding(10)
-        .style(|_theme| iced::widget::container::Style {
-            background: Some(iced::Background::Color(iced::Color::from_rgba(
-                0.0, 0.0, 0.0, 0.8,
-            ))),
-            border: iced::border::Border {
-                color: iced::Color::TRANSPARENT,
-                width: 0.0,
-                radius: 5.0.into(),
-            },
-            shadow: iced::Shadow::default(),
-            text_color: Some(WHITE),
-        });
+        .padding(10);
 
         let subtitle_layer = Container::new(subtitle_text)
             .width(iced::Length::Fixed(self.video_width))
@@ -368,254 +344,213 @@ impl App {
                                 .width(40.0),
                         ),
                 )
-                .push(
-                    Container::new(
-                        Column::new()
-                            .push(Text::new("Playback Controls").size(18).color(WHITE))
-                            .push(
-                                Row::new()
-                                    .spacing(10)
-                                    .push(
-                                        Button::new(Text::new(if self.video.looping() {
-                                            "Disable Loop"
-                                        } else {
-                                            "Enable Loop"
-                                        }))
+                .push(Container::new(
+                    Column::new()
+                        .push(Text::new("Playback Controls").size(18).color(WHITE))
+                        .push(
+                            Row::new()
+                                .spacing(10)
+                                .push(
+                                    Button::new(Text::new(if self.video.looping() {
+                                        "Disable Loop"
+                                    } else {
+                                        "Enable Loop"
+                                    }))
+                                    .width(150.0)
+                                    .on_press(Message::ToggleLoop),
+                                )
+                                .push(
+                                    Button::new(Text::new(if self.muted {
+                                        "Mute"
+                                    } else {
+                                        "Unmute"
+                                    }))
+                                    .width(150.0)
+                                    .on_press(Message::ToggleMute),
+                                )
+                                .push(self.next_button())
+                                .push(
+                                    Button::new(Text::new("Previous"))
                                         .width(150.0)
-                                        .on_press(Message::ToggleLoop),
-                                    )
-                                    .push(
-                                        Button::new(Text::new(if self.muted {
-                                            "Mute"
-                                        } else {
-                                            "Unmute"
-                                        }))
-                                        .width(150.0)
-                                        .on_press(Message::ToggleMute),
-                                    )
-                                    .push(self.next_button())
-                                    .push(
-                                        Button::new(Text::new("Previous"))
-                                            .width(150.0)
-                                            .on_press(Message::OpenLast),
-                                    ),
-                            )
-                            .push(Text::new("Subtitle Controls").size(18).color(WHITE))
-                            .push(
-                                Row::new()
-                                    .spacing(10)
-                                    .push(
-                                        Button::new(Text::new("Own Subs"))
-                                            .width(150.0)
-                                            .on_press(Message::UsingOwnSubs),
-                                    )
-                                    .push(
-                                        Button::new(Text::new("Add At Selection"))
-                                            .width(150.0)
-                                            .on_press(Message::AddAtSelection),
-                                    ),
-                            )
-                            .push(Text::new("Display Settings").size(18).color(WHITE))
-                            .push(
-                                Row::new()
-                                    .spacing(10)
-                                    .push(Text::new("Volume:").color(WHITE))
-                                    .push(
-                                        Slider::new(0.0..=1.0, self.volume, Message::VolumeChanged)
-                                            .step(0.01)
-                                            .width(280.0),
-                                    )
-                                    .push(
-                                        Text::new(format!(
-                                            "{:.0}%",
-                                            if self.muted { 0.0 } else { self.volume * 100.0 }
-                                        ))
-                                        .color(WHITE),
-                                    ),
-                            )
-                            .push(
-                                Row::new()
-                                    .spacing(10)
-                                    .push(Text::new("Video Width:").color(WHITE))
-                                    .push(
-                                        Slider::new(
-                                            800.0..=1920.0,
-                                            self.video_width,
-                                            Message::VideoWidthChanged,
-                                        )
-                                        .step(10.0)
-                                        .width(280.0),
-                                    )
-                                    .push(
-                                        Text::new(format!("{:.0}px", self.video_width))
-                                            .color(WHITE),
-                                    ),
-                            )
-                            .push(
-                                Row::new()
-                                    .spacing(10)
-                                    .push(Text::new("Video Height:").color(WHITE))
-                                    .push(
-                                        Slider::new(
-                                            450.0..=1200.0,
-                                            self.video_height,
-                                            Message::VideoHeightChanged,
-                                        )
-                                        .step(10.0)
-                                        .width(280.0),
-                                    )
-                                    .push(
-                                        Text::new(format!("{:.0}px", self.video_height))
-                                            .color(WHITE),
-                                    ),
-                            )
-                            .push(Text::new("Subtitle Offsets").size(18).color(WHITE))
-                            .push(
-                                Row::new()
-                                    .spacing(10)
-                                    .push(Text::new("Subtitle Offset (sec):").color(WHITE))
-                                    .push(
-                                        Slider::new(
-                                            -30.0..=30.0,
-                                            self.subtitle_offset,
-                                            Message::SubtitleOffsetChanged,
-                                        )
-                                        .step(0.1)
-                                        .width(280.0),
-                                    )
-                                    .push(
-                                        Text::new(format!("{:.1}s", self.subtitle_offset))
-                                            .color(WHITE),
-                                    ),
-                            )
-                            .push(
-                                Row::new()
-                                    .spacing(10)
-                                    .push(Text::new("Subtitle Offset V:").color(WHITE))
-                                    .push(
-                                        Slider::new(
-                                            0.0..=500.0,
-                                            self.subtitle_offset_vertical,
-                                            Message::SubtitleOffsetVerticalChanged,
-                                        )
-                                        .step(5.0)
-                                        .width(280.0),
-                                    )
-                                    .push(
-                                        Text::new(format!(
-                                            "{:.0}px",
-                                            self.subtitle_offset_vertical
-                                        ))
-                                        .color(WHITE),
-                                    ),
-                            )
-                            .push(
-                                Row::new()
-                                    .spacing(10)
-                                    .push(Text::new("Subtitle Offset H:").color(WHITE))
-                                    .push(
-                                        Slider::new(
-                                            -400.0..=200.0,
-                                            self.subtitle_offset_horizontal,
-                                            Message::SubtitleOffsetHorizontalChanged,
-                                        )
-                                        .step(5.0)
-                                        .width(280.0),
-                                    )
-                                    .push(
-                                        Text::new(format!(
-                                            "{:.0}px",
-                                            self.subtitle_offset_horizontal
-                                        ))
-                                        .color(WHITE),
-                                    ),
-                            )
-                            .push(Text::new("Default Paths").size(18).color(WHITE))
-                            .push(
-                                Row::new()
-                                    .spacing(10)
-                                    .push(Text::new("Default Video:").color(WHITE))
-                                    .push(
-                                        Button::new(Text::new(
-                                            self.default_video_path
-                                                .as_ref()
-                                                .map(|p| {
-                                                    PathBuf::from(p)
-                                                        .file_name()
-                                                        .and_then(|n| n.to_str())
-                                                        .unwrap_or("None selected")
-                                                        .to_string()
-                                                })
-                                                .unwrap_or_else(|| "None selected".to_string()),
-                                        ))
-                                        .width(280.0)
-                                        .on_press(Message::OpenDefaultVideoPicker),
-                                    ),
-                            )
-                            .push(
-                                Row::new()
-                                    .spacing(10)
-                                    .push(Text::new("Screenshot Folder:").color(WHITE))
-                                    .push(
-                                        Button::new(Text::new(
-                                            self.screenshot_folder
-                                                .as_ref()
-                                                .map(|p| {
-                                                    let path = Path::new(p);
-                                                    path.file_name()
-                                                        .and_then(|n| n.to_str())
-                                                        .unwrap_or_else(|| {
-                                                            path.to_str().unwrap_or("None")
-                                                        })
-                                                        .to_string()
-                                                })
-                                                .unwrap_or_else(|| "None selected".to_string()),
-                                        ))
-                                        .width(280.0)
-                                        .on_press(Message::OpenScreenshotFolderPicker),
-                                    ),
-                            )
-                            .push(Text::new("System Info").size(18).color(WHITE))
-                            .push(
-                                Row::new().spacing(10).push(
-                                    Button::new(Text::new("Get Monitor Size"))
-                                        .width(280.0)
-                                        .on_press(Message::GetMonitorSize),
+                                        .on_press(Message::OpenLast),
                                 ),
+                        )
+                        .push(Text::new("Subtitle Controls").size(18).color(WHITE))
+                        .push(
+                            Row::new()
+                                .spacing(10)
+                                .push(
+                                    Button::new(Text::new("Own Subs"))
+                                        .width(150.0)
+                                        .on_press(Message::UsingOwnSubs),
+                                )
+                                .push(
+                                    Button::new(Text::new("Add At Selection"))
+                                        .width(150.0)
+                                        .on_press(Message::AddAtSelection),
+                                ),
+                        )
+                        .push(Text::new("Display Settings").size(18).color(WHITE))
+                        .push(
+                            Row::new()
+                                .spacing(10)
+                                .push(Text::new("Volume:").color(WHITE))
+                                .push(
+                                    Slider::new(0.0..=1.0, self.volume, Message::VolumeChanged)
+                                        .step(0.01)
+                                        .width(280.0),
+                                )
+                                .push(
+                                    Text::new(format!(
+                                        "{:.0}%",
+                                        if self.muted { 0.0 } else { self.volume * 100.0 }
+                                    ))
+                                    .color(WHITE),
+                                ),
+                        )
+                        .push(
+                            Row::new()
+                                .spacing(10)
+                                .push(Text::new("Video Width:").color(WHITE))
+                                .push(
+                                    Slider::new(
+                                        800.0..=1920.0,
+                                        self.video_width,
+                                        Message::VideoWidthChanged,
+                                    )
+                                    .step(10.0)
+                                    .width(280.0),
+                                )
+                                .push(Text::new(format!("{:.0}px", self.video_width)).color(WHITE)),
+                        )
+                        .push(
+                            Row::new()
+                                .spacing(10)
+                                .push(Text::new("Video Height:").color(WHITE))
+                                .push(
+                                    Slider::new(
+                                        450.0..=1200.0,
+                                        self.video_height,
+                                        Message::VideoHeightChanged,
+                                    )
+                                    .step(10.0)
+                                    .width(280.0),
+                                )
+                                .push(
+                                    Text::new(format!("{:.0}px", self.video_height)).color(WHITE),
+                                ),
+                        )
+                        .push(Text::new("Subtitle Offsets").size(18).color(WHITE))
+                        .push(
+                            Row::new()
+                                .spacing(10)
+                                .push(Text::new("Subtitle Offset (sec):").color(WHITE))
+                                .push(
+                                    Slider::new(
+                                        -30.0..=30.0,
+                                        self.subtitle_offset,
+                                        Message::SubtitleOffsetChanged,
+                                    )
+                                    .step(0.1)
+                                    .width(280.0),
+                                )
+                                .push(
+                                    Text::new(format!("{:.1}s", self.subtitle_offset)).color(WHITE),
+                                ),
+                        )
+                        .push(
+                            Row::new()
+                                .spacing(10)
+                                .push(Text::new("Subtitle Offset V:").color(WHITE))
+                                .push(
+                                    Slider::new(
+                                        0.0..=500.0,
+                                        self.subtitle_offset_vertical,
+                                        Message::SubtitleOffsetVerticalChanged,
+                                    )
+                                    .step(5.0)
+                                    .width(280.0),
+                                )
+                                .push(
+                                    Text::new(format!("{:.0}px", self.subtitle_offset_vertical))
+                                        .color(WHITE),
+                                ),
+                        )
+                        .push(
+                            Row::new()
+                                .spacing(10)
+                                .push(Text::new("Subtitle Offset H:").color(WHITE))
+                                .push(
+                                    Slider::new(
+                                        -400.0..=200.0,
+                                        self.subtitle_offset_horizontal,
+                                        Message::SubtitleOffsetHorizontalChanged,
+                                    )
+                                    .step(5.0)
+                                    .width(280.0),
+                                )
+                                .push(
+                                    Text::new(format!("{:.0}px", self.subtitle_offset_horizontal))
+                                        .color(WHITE),
+                                ),
+                        )
+                        .push(Text::new("Default Paths").size(18).color(WHITE))
+                        .push(
+                            Row::new()
+                                .spacing(10)
+                                .push(Text::new("Default Video:").color(WHITE))
+                                .push(
+                                    Button::new(Text::new(
+                                        self.default_video_path
+                                            .as_ref()
+                                            .map(|p| {
+                                                PathBuf::from(p)
+                                                    .file_name()
+                                                    .and_then(|n| n.to_str())
+                                                    .unwrap_or("None selected")
+                                                    .to_string()
+                                            })
+                                            .unwrap_or_else(|| "None selected".to_string()),
+                                    ))
+                                    .width(280.0)
+                                    .on_press(Message::OpenDefaultVideoPicker),
+                                ),
+                        )
+                        .push(
+                            Row::new()
+                                .spacing(10)
+                                .push(Text::new("Screenshot Folder:").color(WHITE))
+                                .push(
+                                    Button::new(Text::new(
+                                        self.screenshot_folder
+                                            .as_ref()
+                                            .map(|p| {
+                                                let path = Path::new(p);
+                                                path.file_name()
+                                                    .and_then(|n| n.to_str())
+                                                    .unwrap_or_else(|| {
+                                                        path.to_str().unwrap_or("None")
+                                                    })
+                                                    .to_string()
+                                            })
+                                            .unwrap_or_else(|| "None selected".to_string()),
+                                    ))
+                                    .width(280.0)
+                                    .on_press(Message::OpenScreenshotFolderPicker),
+                                ),
+                        )
+                        .push(Text::new("System Info").size(18).color(WHITE))
+                        .push(
+                            Row::new().spacing(10).push(
+                                Button::new(Text::new("Get Monitor Size"))
+                                    .width(280.0)
+                                    .on_press(Message::GetMonitorSize),
                             ),
-                    )
-                    .style(|_theme| iced::widget::container::Style {
-                        background: Some(iced::Background::Color(iced::Color::from_rgb(
-                            0.1, 0.1, 0.1,
-                        ))),
-                        border: iced::border::Border {
-                            color: iced::Color::from_rgb(0.3, 0.3, 0.3),
-                            width: 2.0,
-                            radius: 8.0.into(),
-                        },
-                        shadow: iced::Shadow::default(),
-                        text_color: None,
-                    }),
-                )
+                        ),
+                ))
                 .width(900)
                 .height(iced::Length::Shrink),
         )
-        .style(|_theme| iced::widget::container::Style {
-            background: Some(iced::Background::Color(iced::Color::from_rgba(
-                0.0, 0.0, 0.0, 0.95,
-            ))),
-            border: iced::border::Border {
-                color: iced::Color::from_rgb(0.4, 0.4, 0.4),
-                width: 2.0,
-                radius: 12.0.into(),
-            },
-            shadow: iced::Shadow {
-                color: iced::Color::BLACK,
-                offset: iced::Vector::new(8.0, 8.0),
-                blur_radius: 25.0,
-            },
-            text_color: None,
-        })
         .width(550)
         .into()
     }
@@ -659,39 +594,11 @@ impl App {
                             ),
                         ),
                     )
-                    .padding(15)
-                    .style(|_theme| iced::widget::container::Style {
-                        background: Some(iced::Background::Color(iced::Color::from_rgb(
-                            0.1, 0.1, 0.1,
-                        ))),
-                        border: iced::border::Border {
-                            color: iced::Color::from_rgb(0.3, 0.3, 0.3),
-                            width: 2.0,
-                            radius: 8.0.into(),
-                        },
-                        shadow: iced::Shadow::default(),
-                        text_color: None,
-                    }),
+                    .padding(15),
                 ),
         )
         .width(800)
         .height(iced::Length::Shrink)
-        .style(|_theme| iced::widget::container::Style {
-            background: Some(iced::Background::Color(iced::Color::from_rgba(
-                0.0, 0.0, 0.0, 0.95,
-            ))),
-            border: iced::border::Border {
-                color: iced::Color::from_rgb(0.4, 0.4, 0.4),
-                width: 2.0,
-                radius: 12.0.into(),
-            },
-            shadow: iced::Shadow {
-                color: iced::Color::BLACK,
-                offset: iced::Vector::new(8.0, 8.0),
-                blur_radius: 25.0,
-            },
-            text_color: None,
-        })
         .width(750)
         .into()
     }
@@ -745,39 +652,11 @@ impl App {
                             )
                             .push(button("Quit").width(280.0).on_press(Message::Quit)),
                     )
-                    .padding(15)
-                    .style(|_theme| iced::widget::container::Style {
-                        background: Some(iced::Background::Color(iced::Color::from_rgb(
-                            0.1, 0.1, 0.1,
-                        ))),
-                        border: iced::border::Border {
-                            color: iced::Color::from_rgb(0.3, 0.3, 0.3),
-                            width: 2.0,
-                            radius: 8.0.into(),
-                        },
-                        shadow: iced::Shadow::default(),
-                        text_color: None,
-                    }),
+                    .padding(15),
                 )
                 .width(350)
                 .height(iced::Length::Shrink),
         )
-        .style(|_theme| iced::widget::container::Style {
-            background: Some(iced::Background::Color(iced::Color::from_rgba(
-                0.0, 0.0, 0.0, 0.95,
-            ))),
-            border: iced::border::Border {
-                color: iced::Color::from_rgb(0.4, 0.4, 0.4),
-                width: 2.0,
-                radius: 12.0.into(),
-            },
-            shadow: iced::Shadow {
-                color: iced::Color::BLACK,
-                offset: iced::Vector::new(8.0, 8.0),
-                blur_radius: 25.0,
-            },
-            text_color: None,
-        })
         .width(350)
         .into()
     }

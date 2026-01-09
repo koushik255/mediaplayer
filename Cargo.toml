@@ -11,14 +11,15 @@ dhat-heap = []
 
 
 [dependencies]
-iced = { version = "0.13", features = ["system"] }
+iced = { version = "0.14", features = ["image", "advanced", "wgpu"] }
 
 url = "2.0"
 percent-encoding = "2.3"
 
 rfd = "0.14"
 
-iced_video_player = {git = "https://github.com/jazzfool/iced_video_player.git", branch="master"}
+#iced_video_player = {git = "https://github.com/jazzfool/iced_video_player.git", branch="master"}
+iced_video_player = {git = "https://github.com/koushik255/iced_video_playeryeap.git", brance = "master"}
 ass_parser = {git = "https://github.com/koushik255/ass_parserfork" ,branch = "main"}
 srt = "0.1.0"
 lib = "0.0.1"
@@ -32,7 +33,7 @@ full = "0.3.0"
 rusqlite = "0.37.0"
 fs = "0.0.5"
 io = "0.0.2"
-iced_aw ={ version = "0.12.0", features = ["glow", "menu"] }
+iced_aw ={ version = "0.13", features = ["menu"] }
 dhat = "0.3.3"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"
