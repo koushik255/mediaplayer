@@ -4,8 +4,8 @@ use iced::Length;
 use iced_aw::style::colors::BLACK;
 use std::path::{Path, PathBuf};
 
+use iced::Element;
 use iced::widget::{Button, Column, Container, Row, Scrollable, Slider, Stack, Text, button};
-use iced::{Element, Padding};
 use iced_aw::style::colors::WHITE;
 use iced_aw::{selection_list::SelectionList, style::selection_list::primary};
 use iced_video_player::VideoPlayer;
@@ -103,6 +103,13 @@ impl App {
             .into_owned();
 
         let mut heresubdudebud = String::new();
+        println!(
+            "text before replace {}",
+            &self
+                .active_subtitle
+                .as_deref()
+                .unwrap_or_else(|| "nothing yet")
+        );
         if let Some(text) = &self.active_subtitle {
             //heresubdudebud = text.to_string();
             heresubdudebud = text.replace("&apos;", "'").replace("&quot;", "\"");

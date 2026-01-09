@@ -24,6 +24,11 @@ subs still fuckedZ":
 
 --Ok, i think i need the setttings menu to be better first, then subtitles then fix the monitor situtaion
 --also maybe just switch of iced because what im doing isnt excusive to it
+--ai for finishing functions
+maybe look at zig cause i needa get better at program tbh but
+just so i can fully control everything?
+ehh i dont need to thats just shiny object tax breh
+lets just work backwards to make the video player aucalty good
 
 
 
@@ -32,7 +37,7 @@ subs still fuckedZ":
 why is the video not in the middle of the whole application, like the space between the left and the right of the edges are un even
 why are the settings and video info button on the same vertical axis as the text, even when there is empty space below them, and why is the file button not in the same
 container as the other visible buttons
-
+-Subtitles thing is still fucked idk why
 
 
 

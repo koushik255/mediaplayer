@@ -479,33 +479,19 @@ impl App {
                 Task::none()
             }
             Message::NewSub(sub_text) => {
-                // This message should only send IF we are not using our own subs
-                // so if own subs = true do nothing,
-                println!("subs from new sub {:?}", sub_text.clone());
-                self.active_subtitle = sub_text.clone();
-
-                if !self.is_built_in_subs {
-                    println!("using built in subs");
-                } else {
-                    if self.prev_sub != sub_text {
-                        self.prev_sub = self.active_subtitle.clone();
-                        self.active_subtitle = sub_text.clone();
-                        println!("in the else");
-                    } else {
-                        self.prev_sub = self.prev_sub.clone();
-                    }
-                    // none of the code after this is being usied in this message idk why maybe
-                    // because wait its yeah i have no clue dude
-
-                    self.active_subtitle = sub_text.clone();
-
+                if self.is_built_in_subs {
                     match sub_text {
-                        Some(text) => {
-                            println!("sub {}", text);
+                        Some(ref text) if Self::is_valid_subtitle_text(text) => {
+                            self.active_subtitle = Some(text.clone());
                             println!("📺 NEW SUBTITLE DISPLAYED: {}", text);
                         }
+                        Some(ref text) => {
+                            println!("⚠️ Ignoring invalid subtitle: {}", text);
+                            self.active_subtitle = None;
+                        }
                         None => {
-                            println!("no subs blud");
+                            println!("yo yo yo yo ");
+                            self.active_subtitle = None;
                         }
                     }
                 }
@@ -538,9 +524,10 @@ impl App {
             Message::NewFrame => {
                 if !self.dragging {
                     self.position = self.video.position().as_secs_f64();
-                    //self.update_active_subtitle();
+                    self.update_active_subtitle();
                     // here decide the bool
                 }
+                println!("Subttile on frame update {:?}", &self.active_subtitle);
                 if !self.is_built_in_subs {
                     println!("{}", self.is_built_in_subs);
                     self.update_active_subtitle();
@@ -1308,6 +1295,24 @@ impl App {
             .iter()
             .find(|sub| offset_time >= sub.start && offset_time <= sub.end)
             .map(|sub| sub.text.clone());
+    }
+
+    fn is_valid_subtitle_text(text: &str) -> bool {
+        let trimmed = text.trim();
+
+        if trimmed.is_empty() {
+            return false;
+        }
+
+        if trimmed.len() < 2 {
+            return false;
+        }
+
+        let has_letters = trimmed.chars().any(|c| c.is_alphabetic());
+        let is_svg_path = trimmed.starts_with('m')
+            && (trimmed.contains('l') || trimmed.contains('c') || trimmed.contains('q'));
+
+        has_letters && !is_svg_path
     }
 
     fn load_video_from_gtk(&mut self, path: PathBuf) {
